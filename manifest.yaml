@@ -36,18 +36,11 @@ tunnel: true             # request a public HTTPS uplink for parents/teachers/fi
 fabric:                  # app-to-app broker: we PROVIDE students/billing (Donations/Kiosk consume it)
   provides:
     - capability: billing
-settings:
-  - key: SCHOOL_NAME
-    label: School name
-    type: text
-  - key: CURRENCY
-    label: Currency
-    type: select
-    options: [usd, cad, gbp, eur]
-    default: usd
-  - key: STRIPE_ACCOUNT
-    label: Stripe account for tuition payments
-    type: stripe-account
+# No install-time `settings:` on purpose — installation is one-click. Everything a
+# masjid needs (school name, currency, which OpenMasjidOS Stripe account to charge)
+# is collected INSIDE the app: the first-run setup and the in-app admin settings,
+# persisted to /data. (Same pattern as OpenMasjid Donations. Org rule: the platform
+# injects no masjid profile; each app owns its own config — CLAUDE.md §2/§6.)
 ports:
   - container: 8080
     label: Web interface

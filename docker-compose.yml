@@ -30,12 +30,10 @@ services:
       # for parent/teacher/finance access, the public admissions form, QR links, and
       # inbound Stripe webhooks. Empty when not exposed.
       OPENMASJID_PUBLIC_URL: ${OPENMASJID_PUBLIC_URL:-}
-      # Install settings (also editable in-app). Fabric Stripe (manifest `stripe: true`):
-      # STRIPE_ACCOUNT picks which named OpenMasjidOS vault account to charge through;
-      # the keys themselves are fetched server-to-server (never set or stored here).
-      SCHOOL_NAME: ${SCHOOL_NAME:-}
-      CURRENCY: ${CURRENCY:-usd}
-      STRIPE_ACCOUNT: ${STRIPE_ACCOUNT:-}
+      # No install settings: school name, currency, and the OpenMasjidOS Stripe account
+      # to charge through are all configured INSIDE the app (first-run + admin settings,
+      # saved to /data). Stripe keys are fetched server-to-server (manifest `stripe: true`),
+      # never set or stored here.
     ports:
       # host:container. OpenMasjidOS offers "Open" on the lowest published host port
       # and picks a different free host port automatically if 8360 is already taken.
