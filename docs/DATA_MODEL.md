@@ -67,6 +67,40 @@ money paths). Every table: `id`, `created_at`, `updated_at`.
   endpoint `/api/fabric/site` is gated on a `domain:` capability our manifest can add later if needed
   (the injected `OPENMASJID_PUBLIC_URL` path works without it).
 
+## Origin policy — reconciliation with §12.4 (IMPORTANT)
+
+`CLAUDE.md` §12.4 says classify a request as `tunnel` if **`cf-ray` is present OR
+`x-forwarded-proto: https`**. We implement a **fail-closed, IP-based** rule that preserves
+the *intent* (admin = LAN-only) and hardens it. Reason (confirmed against OpenMasjidOS
+v0.40.0 source, and an adversarial review that found the naive rule exploitable):
+
+1. This app is `https: true`. On the **LAN**, OpenMasjidOS runs a per-app TLS proxy
+   (`packages/core/src/system/app-proxy.ts`) that **always** forwards
+   `x-forwarded-proto: https` — even for a LAN admin. The tunnel ingress
+   (`ingress.ts`) sets `x-forwarded-proto: https` **and** `cf-ray`. So `x-forwarded-proto`
+   cannot distinguish LAN-https from tunnel — using it would lock admins out of the LAN.
+2. Worse, **"no `cf-ray`" is NOT proof of a trusted LAN**: a request that reaches our
+   published port directly from the internet (an unfirewalled VPS / port-forward) also has
+   no `cf-ray`. Classifying that as `lan` would expose admin — and, on a fresh install,
+   let an internet attacker create the first admin. So absence-of-a-header must never grant.
+
+**The rule (`packages/server/src/security/origin.ts`):**
+- `tunnel` if `cf-ray` is present (genuine Cloudflare) **OR** the effective client IP is
+  public. `lan` **only** when the effective client IP is **private/loopback/link-local**.
+- Effective client IP trusts `cf-connecting-ip`/`x-forwarded-for` **only when the TCP peer
+  is itself local** (an OS proxy / loopback); a direct client's forged forwarding headers
+  are ignored (the unspoofable socket peer wins). `x-forwarded-proto` is used ONLY for the
+  cookie `Secure` flag, never for the policy.
+- **Fail-closed + safe both directions:** a public client can never be `lan` (spoofing
+  `cf-ray` or a private XFF only *downgrades* to `tunnel`); a tunnel client can't strip
+  `cf-ray` and can't forge a private peer. On a VPS, admin therefore requires a genuinely
+  local path (e.g. SSH-tunnel to loopback) — exactly §12.4's "admin never over the internet."
+
+Covered by `security/origin.test.ts` (incl. the VPS/public-client cases) + the
+`test/auth.test.ts` matrix. **If the OS changes how its proxies set peer/forwarding
+headers, revisit this.** Operators should still firewall the published port on
+internet-exposed hosts (defense in depth) — see `docker-compose.yml`.
+
 ## Assumptions log (§20 open questions)
 
 Working assumptions in force unless/until Hasan says otherwise. **Ask before the step that depends on it.**

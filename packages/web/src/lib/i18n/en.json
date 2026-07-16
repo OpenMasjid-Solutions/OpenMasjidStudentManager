@@ -6,11 +6,36 @@
   "auth": {
     "loginTitle": "Welcome back",
     "loginSubtitle": "Sign in to your madrasa's office",
+    "setupTitle": "Create your admin account",
+    "setupSubtitle": "First-run setup — this account manages everything on the masjid network.",
     "username": "Username",
     "password": "Password",
+    "confirmPassword": "Confirm password",
     "signIn": "Sign in",
-    "working": "Signing in…",
-    "comingSoon": "Sign-in arrives in the next step — this is the app shell."
+    "createAccount": "Create account",
+    "working": "Working…",
+    "signOut": "Sign out",
+    "passwordHint": "Use at least 12 characters.",
+    "passwordsMismatch": "Those passwords don’t match.",
+    "pwWeak": "Weak",
+    "pwFair": "Fair",
+    "pwGood": "Good",
+    "pwStrong": "Strong",
+    "adminTunnelNote": "Admin sign-in only works on the masjid network. Teachers, finance and parents can sign in from anywhere.",
+    "setupOnLanTitle": "Almost there",
+    "setupOnLanBody": "Set up the admin account from a device on the masjid’s own Wi-Fi — for safety, the first admin can’t be created over the internet."
+  },
+  "home": {
+    "title": "You’re signed in",
+    "signedInAs": "Signed in as {{name}}",
+    "role": "Role: {{role}}",
+    "next": "Your role’s dashboard arrives in the next steps — attendance, grades, billing and the family portal."
+  },
+  "role": {
+    "admin": "Administrator",
+    "teacher": "Teacher",
+    "finance": "Finance",
+    "parent": "Parent"
   },
   "controls": {
     "theme": "Theme",

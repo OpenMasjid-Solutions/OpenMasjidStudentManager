@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 OpenMasjid-Solutions
 /**
- * The root tRPC AppRouter. The web app imports ONLY its TYPE (CLAUDE.md §6, §8),
- * so this is the end-to-end type-safety boundary. Slice 1 exposes a single health
- * query; routers for auth/people/classes/… are added per §8 as slices land.
+ * The root tRPC AppRouter. The web app imports ONLY its TYPE (CLAUDE.md §6, §8).
+ * Routers for people/classes/… are added per §8 as slices land. Slice 2 adds `auth`.
  */
 import { router, publicProcedure } from './trpc';
+import { authRouter } from './auth';
 import { config, fabricConfigured } from '../config';
 
 export const appRouter = router({
@@ -16,6 +16,8 @@ export const appRouter = router({
     version: config.version,
     standalone: !fabricConfigured(),
   })),
+
+  auth: authRouter,
 });
 
 export type AppRouter = typeof appRouter;

@@ -27,9 +27,10 @@ export type DB = typeof db;
 
 /** Apply committed migrations. Idempotent — Drizzle tracks what has been applied.
  *  Works in dev (src/db → ../../drizzle) and prod (dist/db → ../../drizzle, where
- *  the Dockerfile copies the committed migrations alongside dist). */
-export function runMigrations(): void {
-  const migrationsFolder = path.resolve(__dirname, '..', '..', 'drizzle');
+ *  the Dockerfile copies the committed migrations alongside dist). Tests pass an
+ *  explicit folder to avoid depending on __dirname under the test runner. */
+export function runMigrations(folder?: string): void {
+  const migrationsFolder = folder ?? path.resolve(__dirname, '..', '..', 'drizzle');
   migrate(db, { migrationsFolder });
   log.info('migrations applied');
 }

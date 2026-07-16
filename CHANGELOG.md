@@ -9,19 +9,35 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
-### Added
-- Monorepo skeleton (npm workspaces: `packages/server` + `packages/web`), TypeScript
-  `strict`, SPDX headers, AGPL-3.0-only licensing, CLA + CONTRIBUTING, `VERSION`.
-- Server boot: Fastify + tRPC + SQLite (WAL) via Drizzle, migrations-on-boot, static
-  UI serving with SPA fallback, `/healthz`.
-- Web app shell: React + Vite, the OpenMasjidOS "liquid glass" design system ported
-  verbatim (tokens/glass/app CSS + Motion presets + cursor glint + masjid glyphs),
-  i18n (en/ar/ur) with full RTL, dark/light/system theme flip, and a login screen in
-  the family look. Bundled OFL Amiri (Naskh) face for Arabic.
-- `docs/FABRIC_BILLING_CONTRACT.md` (the `students/billing` cross-repo contract, §11
-  verbatim); `docs/PAYMENTS.md` and `docs/DATA_MODEL.md` (with the open-questions log).
-- Catalog/CI scaffolding: `manifest.yaml`, `docker-compose.yml`, multi-stage `Dockerfile`,
-  `.github/workflows/build-image.yml` (multi-arch → GHCR) + `cla.yml`.
+## [0.2.0]
 
-## [0.1.0] — unreleased
-Initial scaffolding. Not yet published to the OpenMasjidAPPS catalog.
+### Added
+- **Authentication + access-origin policy** (the security foundation — §5, §12, §12.4, §14):
+  - Local accounts with **argon2id** password hashing (`@node-rs/argon2`), server-side
+    sessions (opaque token; only its SHA-256 is stored), first-run admin setup, login,
+    logout. Login is brute-force rate-limited on the real TCP peer with generic errors.
+  - **Origin policy: `admin` is LAN-only** — admin login AND existing admin sessions are
+    refused over the Cloudflare tunnel; teacher/finance/parent work from both origins.
+    Enforced in one tRPC middleware consulted by every procedure. Admin-over-tunnel is
+    refused *before* password verification, so the tunnel is never a password oracle.
+  - **SSO fast-path** (LAN only, env-gated): a valid OpenMasjidOS dashboard session mints
+    a short-lived (1 h) local admin session; `username` treated as untrusted display text.
+  - 32 tests: argon2id, origin classification + the full role × origin matrix, rate
+    limiting, first-run, login, admin@tunnel → 403 at login and session-use, role walls, SSO.
+- Auth UI: first-run **Setup**, **Login** (with the friendly admin-only-on-LAN note),
+  signed-in **Home** placeholder + sign out; all strings in i18n (en/ar/ur), RTL-correct.
+
+### Changed
+- **One-click install** — removed the manifest `settings:` block; school name, currency and
+  the Stripe account are configured inside the app (matches OpenMasjid Donations).
+
+### Note
+- Origin classification keys on `cf-ray` only (not `x-forwarded-proto`) — a deliberate,
+  documented deviation from §12.4's literal wording, required because this `https: true`
+  app's LAN TLS proxy also sets `x-forwarded-proto: https`. See `docs/DATA_MODEL.md`.
+
+## [0.1.0]
+Initial scaffolding, published to the OpenMasjidAPPS catalog: monorepo skeleton (npm
+workspaces), Fastify + tRPC + SQLite (WAL) via Drizzle with migrations-on-boot, the
+OpenMasjidOS "liquid glass" design system ported verbatim (i18n/RTL, dark/light, Amiri
+Naskh), the `students/billing` contract + docs, and the multi-arch → GHCR CI.

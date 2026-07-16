@@ -14,7 +14,7 @@ services:
     # Tag for humans + @sha256 digest for integrity (the digest is the real pin — a
     # moved tag can't repoint it). At release, pin both (CLAUDE.md §19):
     #   ghcr.io/openmasjid-solutions/openmasjidstudentmanager:0.1.0@sha256:<digest>
-    image: ghcr.io/openmasjid-solutions/openmasjidstudentmanager:0.1.0@sha256:73225114f7f22ed97718536db8dcff66b2e0eec891f9f9bbc512cbdd0a774f2a
+    image: ghcr.io/openmasjid-solutions/openmasjidstudentmanager:0.2.0
     restart: unless-stopped
     environment:
       PORT: "8080"
@@ -37,6 +37,9 @@ services:
     ports:
       # host:container. OpenMasjidOS offers "Open" on the lowest published host port
       # and picks a different free host port automatically if 8360 is already taken.
+      # Defence in depth: on an internet-exposed host (e.g. a VPS), firewall this port so
+      # it's reachable only on the masjid LAN. The app already denies admin to any non-local
+      # client (origin policy, §12.4), but keeping the port off the public internet is wise.
       - "8360:8080"
     volumes:
       - data:/data

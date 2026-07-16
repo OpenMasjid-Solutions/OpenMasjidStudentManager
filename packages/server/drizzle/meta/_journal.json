@@ -8,6 +8,13 @@
       "when": 1784166080820,
       "tag": "0000_quick_machine_man",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1784169138685,
+      "tag": "0001_public_lord_tyger",
+      "breakpoints": true
     }
   ]
 }
