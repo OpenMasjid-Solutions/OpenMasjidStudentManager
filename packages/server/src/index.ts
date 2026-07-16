@@ -33,6 +33,12 @@ async function main(): Promise<void> {
   const app = Fastify({
     logger: false, // we log ourselves and never log secrets (CLAUDE.md §14)
     bodyLimit: 1_048_576, // 1 MiB JSON cap (uploads get their own limit later)
+    // tRPC httpBatchLink batches queries into ONE GET whose path is the comma-joined
+    // procedure list (e.g. records.fieldDefsList,records.notesForStudent,…). Fastify's
+    // default maxParamLength (100) truncates that to a 414, silently failing the batch —
+    // so raise it. (Caught by driving the student detail in a browser; createCaller tests
+    // bypass HTTP and never hit this.)
+    maxParamLength: 5000,
   });
 
   await app.register(fastifyCookie);

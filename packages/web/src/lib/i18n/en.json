@@ -69,6 +69,44 @@
     "addContact": "Add contact",
     "noContacts": "No emergency contacts"
   },
+  "nav": {
+    "directory": "Directory",
+    "settings": "Settings"
+  },
+  "settings": {
+    "title": "Settings",
+    "customFields": "Custom student fields",
+    "customFieldsHint": "Define fields once — they apply to every student’s record (e.g. previous madrasa, juz at intake, walī name).",
+    "noFields": "No custom fields yet.",
+    "fieldLabel": "Field label",
+    "fieldType": "Type",
+    "options": "Options",
+    "optionsHint": "Comma-separated, e.g. Beginner, Intermediate, Advanced",
+    "addField": "Add field",
+    "archive": "Remove"
+  },
+  "ftype": {
+    "text": "Text",
+    "number": "Number",
+    "date": "Date",
+    "select": "Choose one"
+  },
+  "student": {
+    "customFields": "Custom fields",
+    "noFields": "No custom fields defined. Add them in Settings.",
+    "notes": "Staff notes",
+    "noNotes": "No notes yet.",
+    "addNote": "Add a note",
+    "notePlaceholder": "Staff-only — parents never see this.",
+    "incidents": "Incidents",
+    "noIncidents": "No incidents recorded.",
+    "addIncident": "Record incident",
+    "date": "Date",
+    "category": "Category",
+    "description": "Description",
+    "action": "Action taken",
+    "visibleToParents": "Visible to parents"
+  },
   "role": {
     "admin": "Administrator",
     "teacher": "Teacher",

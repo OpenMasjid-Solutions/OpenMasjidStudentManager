@@ -189,3 +189,25 @@
   padding: 0.4rem 0.7rem;
   font-size: 0.85rem;
 }
+
+.admin-nav {
+  display: inline-flex;
+  gap: 0.4rem;
+  margin-inline-start: 0.5rem;
+}
+@media (max-width: 640px) {
+  .admin-nav { display: none; }
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--color-primary);
+  cursor: pointer;
+  text-align: start;
+}
+.link-btn:hover {
+  text-decoration: underline;
+}

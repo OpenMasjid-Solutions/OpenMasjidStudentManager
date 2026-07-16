@@ -22,6 +22,13 @@
       "when": 1784243617809,
       "tag": "0002_solid_captain_flint",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1784244728030,
+      "tag": "0003_little_cardiac",
+      "breakpoints": true
     }
   ]
 }

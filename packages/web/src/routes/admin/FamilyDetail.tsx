@@ -8,7 +8,15 @@ import { useTranslation } from 'react-i18next';
 import { fadeRise } from '../../lib/motion';
 import { trpc } from '../../lib/trpc';
 
-export function FamilyDetail({ familyId, onBack }: { familyId: string; onBack: () => void }) {
+export interface StudentLite {
+  id: string;
+  firstName: string;
+  lastName: string;
+  pin: string;
+  status: 'active' | 'withdrawn';
+}
+
+export function FamilyDetail({ familyId, onBack, onOpenStudent }: { familyId: string; onBack: () => void; onOpenStudent: (s: StudentLite) => void }) {
   const { t } = useTranslation();
   const utils = trpc.useUtils();
   const q = trpc.people.familyGet.useQuery({ id: familyId });
@@ -104,7 +112,11 @@ export function FamilyDetail({ familyId, onBack }: { familyId: string; onBack: (
               <tbody>
                 {students.map((s) => (
                   <tr key={s.id}>
-                    <td>{s.firstName} {s.lastName}</td>
+                    <td>
+                      <button type="button" className="link-btn" onClick={() => onOpenStudent({ id: s.id, firstName: s.firstName, lastName: s.lastName, pin: s.pin, status: s.status })}>
+                        {s.firstName} {s.lastName}
+                      </button>
+                    </td>
                     <td><span className="pin">{s.pin}</span></td>
                     <td>{s.status === 'withdrawn' ? <span className="chip is-muted">{t('directory.withdrawn')}</span> : <span className="chip">{t('directory.active')}</span>}</td>
                     <td className="actions">

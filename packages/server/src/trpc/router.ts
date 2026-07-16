@@ -7,6 +7,7 @@
 import { router, publicProcedure } from './trpc';
 import { authRouter } from './auth';
 import { peopleRouter } from './people';
+import { recordsRouter } from './records';
 import { config, fabricConfigured } from '../config';
 
 export const appRouter = router({
@@ -20,6 +21,7 @@ export const appRouter = router({
 
   auth: authRouter,
   people: peopleRouter,
+  records: recordsRouter,
 });
 
 export type AppRouter = typeof appRouter;

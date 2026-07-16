@@ -9,6 +9,28 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.4.0]
+
+### Added
+- **Student record extras** (§4/§5/§9/§14):
+  - **Custom fields** — admin defines typed fields once (text / number / date / choose-one)
+    in Settings; values live on each student and are validated against the field type on
+    every write. Defs are soft-deleted so old values keep their meaning.
+  - **Staff notes** — a running, append-only, staff-eyes-only activity log per student.
+  - **Incidents** — date, category, description, action taken, recorded-by, with a
+    per-incident **"visible to parents" toggle that defaults OFF** (§4). Finance never sees them.
+- Admin UI: a **Settings** page (custom-field definitions) and a per-student record view
+  (custom fields, notes, incidents) reached from the family record. i18n en/ar/ur, RTL.
+- Walls tested (52 tests total): finance may read custom-field values but never notes/incidents;
+  teacher/parent are denied for now (scoped reads land with classes/portal); the PIN and
+  note/incident bodies never enter the audit trail.
+
+### Fixed
+- **`414 URI Too Long`** on the student record: tRPC batches multiple queries into one GET
+  whose path exceeded Fastify's default `maxParamLength` (100), silently failing the batch
+  (notes/incidents rendered empty). Raised `maxParamLength`. Caught by driving the real
+  browser — the `createCaller` tests bypass HTTP and never hit it.
+
 ## [0.3.0]
 
 ### Added

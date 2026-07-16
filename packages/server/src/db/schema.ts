@@ -189,3 +189,83 @@ export const auditLog = sqliteTable(
   (t) => ({ entityIdx: index('audit_entity_idx').on(t.entity, t.entityId), atIdx: index('audit_at_idx').on(t.createdAt) }),
 );
 export type AuditEntry = typeof auditLog.$inferSelect;
+
+// ── Record extras (slice 4): custom fields, notes, incidents ─────────────────
+
+export type CustomFieldType = 'text' | 'number' | 'date' | 'select';
+
+/** Admin-defined custom field definitions applied to every student (§4). Soft-deleted
+ *  (archivedAt) so historical values keep their meaning (§9). `options` is used by `select`. */
+export const studentFieldDefs = sqliteTable('student_field_defs', {
+  id: text('id').primaryKey(),
+  label: text('label').notNull(),
+  type: text('type').$type<CustomFieldType>().notNull(),
+  options: text('options', { mode: 'json' }).$type<string[]>(), // for `select`
+  position: integer('position').notNull().default(0),
+  archivedAt: integer('archived_at', { mode: 'timestamp_ms' }),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+});
+export type StudentFieldDef = typeof studentFieldDefs.$inferSelect;
+
+/** A custom-field value on one student. Stored as text; validated against the def's type
+ *  on every write (§9). One value per (student, def). */
+export const studentFieldValues = sqliteTable(
+  'student_field_values',
+  {
+    id: text('id').primaryKey(),
+    studentId: text('student_id')
+      .notNull()
+      .references(() => students.id, { onDelete: 'restrict' }),
+    defId: text('def_id')
+      .notNull()
+      .references(() => studentFieldDefs.id, { onDelete: 'restrict' }),
+    value: text('value').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({ uq: unique('student_field_values_uq').on(t.studentId, t.defId), studentIdx: index('sfv_student_idx').on(t.studentId) }),
+);
+export type StudentFieldValue = typeof studentFieldValues.$inferSelect;
+
+/** Running staff-only notes on a student (activity log) — append-only. Never visible to
+ *  parents or finance (§5/§14). Author stored as plain fields (SSO admins have no row). */
+export const studentNotes = sqliteTable(
+  'student_notes',
+  {
+    id: text('id').primaryKey(),
+    studentId: text('student_id')
+      .notNull()
+      .references(() => students.id, { onDelete: 'restrict' }),
+    body: text('body').notNull(),
+    authorUserId: text('author_user_id'),
+    authorName: text('author_name'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({ studentIdx: index('student_notes_student_idx').on(t.studentId) }),
+);
+export type StudentNote = typeof studentNotes.$inferSelect;
+
+/** Incident / disciplinary records. Staff-eyes-only by default: `visibleToParents`
+ *  defaults OFF and only a per-incident opt-in ever reaches a parent (§4/§14). Finance
+ *  never sees these. */
+export const incidents = sqliteTable(
+  'incidents',
+  {
+    id: text('id').primaryKey(),
+    studentId: text('student_id')
+      .notNull()
+      .references(() => students.id, { onDelete: 'restrict' }),
+    date: text('date').notNull(), // ISO date (YYYY-MM-DD)
+    category: text('category').notNull(),
+    description: text('description').notNull(),
+    actionTaken: text('action_taken'),
+    visibleToParents: integer('visible_to_parents', { mode: 'boolean' }).notNull().default(false),
+    recordedByUserId: text('recorded_by_user_id'),
+    recordedByName: text('recorded_by_name'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({ studentIdx: index('incidents_student_idx').on(t.studentId) }),
+);
+export type Incident = typeof incidents.$inferSelect;
