@@ -1,0 +1,191 @@
+/* SPDX-License-Identifier: AGPL-3.0-only */
+/* Copyright (C) 2026 OpenMasjid-Solutions */
+/* App-specific admin layout (NOT ported). Uses the ported design tokens + logical
+   properties so it works LTR and RTL (CLAUDE.md §15/§16). */
+
+.admin-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.admin-topbar {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.7rem clamp(0.75rem, 3vw, 1.5rem);
+  border-radius: 0;
+  border-block-end: 1px solid var(--glass-border);
+}
+.admin-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  font-family: var(--font-display);
+  font-weight: 700;
+  color: var(--color-ink);
+}
+.admin-brand .mark {
+  color: var(--color-primary);
+  display: inline-flex;
+}
+.admin-spacer {
+  flex: 1;
+}
+.admin-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.admin-main {
+  flex: 1;
+  width: 100%;
+  max-width: 1040px;
+  margin-inline: auto;
+  padding: clamp(1rem, 3vw, 2rem);
+}
+
+.admin-header {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-block-end: 1.25rem;
+}
+.admin-header .spacer {
+  flex: 1;
+}
+
+.back-link {
+  background: none;
+  border: none;
+  color: var(--color-ink-muted);
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  margin-block-end: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+.back-link:hover {
+  color: var(--color-primary);
+}
+
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+  gap: 1rem;
+}
+.fam-card {
+  text-align: start;
+  cursor: pointer;
+  padding: 1rem 1.1rem;
+  border: none;
+  font: inherit;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.fam-card h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+.chip {
+  font-size: 0.78rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  color: var(--color-ink-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.chip.is-muted {
+  opacity: 0.6;
+}
+.chip.is-accent {
+  border-color: color-mix(in srgb, var(--color-gold) 45%, transparent);
+  color: var(--color-gold);
+}
+
+.section {
+  margin-block-end: 1.5rem;
+}
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-block-end: 0.75rem;
+}
+.section-head h2 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+.section-head .spacer {
+  flex: 1;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.92rem;
+}
+.data-table th,
+.data-table td {
+  text-align: start;
+  padding: 0.55rem 0.6rem;
+  border-block-end: 1px solid var(--glass-border);
+  vertical-align: middle;
+}
+.data-table th {
+  color: var(--color-ink-faint);
+  font-weight: 600;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.data-table td.actions {
+  text-align: end;
+  white-space: nowrap;
+}
+.pin {
+  font-family: var(--mono, ui-monospace, monospace);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.12em;
+  color: var(--color-gold);
+}
+.muted {
+  color: var(--color-ink-muted);
+}
+.empty {
+  color: var(--color-ink-faint);
+  padding: 1.5rem 0;
+  text-align: center;
+}
+
+.inline-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  align-items: flex-end;
+  padding: 0.9rem 1rem;
+  margin-block-start: 0.75rem;
+}
+.inline-form .field {
+  margin: 0;
+  flex: 1 1 12rem;
+}
+.btn--sm {
+  padding: 0.4rem 0.7rem;
+  font-size: 0.85rem;
+}

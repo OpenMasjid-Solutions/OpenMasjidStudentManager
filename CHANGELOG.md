@@ -9,6 +9,25 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.3.0]
+
+### Added
+- **People & SIS — the record of record** (§4/§5/§9/§14): families, students, guardians,
+  the guardian↔family and guardian↔user links, and emergency contacts.
+  - **Student PINs**: a 6-digit, CSPRNG, install-unique PIN is generated automatically at
+    registration (the name+PIN lookup index for payments + portal). Retrievable by admin/
+    finance, regenerable (audited) — never logged, never in the audit trail.
+  - **Audit log** (append-only): every family/student/guardian create, update, withdraw and
+    PIN regeneration records who/when/what — with PIN values and secrets excluded.
+  - **Admin directory UI**: families as cards → family record with a students table (PIN,
+    New-PIN, withdraw/reinstate), guardians (with emergency flag), and emergency contacts —
+    the first admin dashboard, over the family scene. i18n en/ar/ur, RTL, dark/light.
+- **Role walls enforced + tested** (§5): writes are admin-only; the directory + student
+  records are admin **or** finance; teachers and parents have no access yet (their scoped
+  reads land with classes/portal); admin remains LAN-only. 8 new tests (46 total) cover PIN
+  uniqueness/regeneration, the create/withdraw/link flows, the role×origin walls, and that
+  the PIN never reaches the audit detail.
+
 ## [0.2.0]
 
 ### Added

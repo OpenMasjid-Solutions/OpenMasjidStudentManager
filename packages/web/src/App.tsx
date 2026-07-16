@@ -15,6 +15,7 @@ import { fadeRise } from './lib/motion';
 import { Setup } from './routes/Setup';
 import { Login } from './routes/Login';
 import { Home } from './routes/Home';
+import { AdminApp } from './routes/admin/AdminApp';
 import { trpc } from './lib/trpc';
 
 function SetupOnLanNotice() {
@@ -35,6 +36,17 @@ export function App() {
   const session = trpc.auth.session.useQuery(undefined, { retry: false });
   const health = trpc.health.useQuery(undefined, { retry: false });
   const s = session.data;
+
+  // The admin dashboard is a full-screen app (its own topbar); everything else uses the
+  // centered auth-wrap. Other roles get a placeholder until their dashboards land.
+  if (!session.isLoading && !session.isError && s?.authenticated && s.user?.role === 'admin') {
+    return (
+      <>
+        <SceneBackground />
+        <AdminApp />
+      </>
+    );
+  }
 
   let screen: React.ReactNode;
   if (session.isLoading) {

@@ -57,3 +57,14 @@ export const adminProcedure = t.procedure.use(requireAuth(['admin']));
 export const teacherProcedure = t.procedure.use(requireAuth(['teacher']));
 export const financeProcedure = t.procedure.use(requireAuth(['finance']));
 export const parentProcedure = t.procedure.use(requireAuth(['parent']));
+/** Directory / student-record reads that finance shares with admin (§5). */
+export const adminOrFinanceProcedure = t.procedure.use(requireAuth(['admin', 'finance']));
+
+/** The audit actor for the current session (§14) — SSO admins have no user row. */
+export function auditActor(ctx: Context): { userId: string | null; role: string; name: string | null } {
+  return {
+    userId: ctx.session?.userId ?? null,
+    role: ctx.session?.role ?? 'unknown',
+    name: ctx.session?.username ?? null,
+  };
+}
