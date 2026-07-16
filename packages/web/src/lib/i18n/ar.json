@@ -1,0 +1,31 @@
+{
+  "app": {
+    "name": "OpenMasjid Students",
+    "tagline": "مكتب المدرسة في تطبيق واحد"
+  },
+  "auth": {
+    "loginTitle": "مرحباً بعودتك",
+    "loginSubtitle": "سجّل الدخول إلى مكتب مدرستك",
+    "username": "اسم المستخدم",
+    "password": "كلمة المرور",
+    "signIn": "تسجيل الدخول",
+    "working": "جارٍ تسجيل الدخول…",
+    "comingSoon": "تسجيل الدخول يأتي في الخطوة التالية — هذه واجهة التطبيق."
+  },
+  "controls": {
+    "theme": "المظهر",
+    "language": "اللغة"
+  },
+  "theme": {
+    "dark": "داكن",
+    "light": "فاتح",
+    "system": "النظام"
+  },
+  "status": {
+    "connecting": "جارٍ الاتصال…",
+    "connected": "متصل",
+    "offline": "الخادم غير متاح",
+    "standalone": "مستقل",
+    "linked": "مرتبط بـ OpenMasjidOS"
+  }
+}

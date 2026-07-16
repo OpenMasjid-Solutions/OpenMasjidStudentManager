@@ -1,0 +1,31 @@
+{
+  "app": {
+    "name": "OpenMasjid Students",
+    "tagline": "The madrasa office in one app"
+  },
+  "auth": {
+    "loginTitle": "Welcome back",
+    "loginSubtitle": "Sign in to your madrasa's office",
+    "username": "Username",
+    "password": "Password",
+    "signIn": "Sign in",
+    "working": "Signing in…",
+    "comingSoon": "Sign-in arrives in the next step — this is the app shell."
+  },
+  "controls": {
+    "theme": "Theme",
+    "language": "Language"
+  },
+  "theme": {
+    "dark": "Dark",
+    "light": "Light",
+    "system": "System"
+  },
+  "status": {
+    "connecting": "Connecting…",
+    "connected": "Connected",
+    "offline": "Server not reachable",
+    "standalone": "Standalone",
+    "linked": "Linked to OpenMasjidOS"
+  }
+}

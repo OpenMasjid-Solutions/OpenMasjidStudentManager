@@ -1,0 +1,53 @@
+# SPDX-License-Identifier: AGPL-3.0-only
+# Copyright (C) 2026 OpenMasjid-Solutions
+id: students
+name: OpenMasjid Students
+tagline: The madrasa office in one app — attendance, grades, report cards, tuition
+category: admin
+version: 0.1.0
+author: OpenMasjid-Solutions
+license: AGPL-3.0-only
+icon: icon.svg
+description: |
+  **OpenMasjid Students** is school management built for madāris — weekend maktab,
+  nazrah and hifz programs, and multi-year ʿālim courses — that runs on the masjid's
+  own hardware.
+
+  It is a four-role app: **admins** manage everything (on the masjid network),
+  **teachers** take attendance and run their gradebooks, a **finance manager** runs
+  billing, and **parents** get a phone-first portal with their kids' grades, weekly
+  schedule, report cards, transcripts and the family balance — payable by card in the
+  app, with autopay.
+
+  Each term the office defines the exams; once teachers enter the scores, the app
+  pre-makes every report card as a PDF and, across the years, builds each student's
+  cumulative transcript. An admissions pipeline takes a family from a public enquiry
+  form to an enrolled, invoiced student in one click.
+
+  Tuition paid through **OpenMasjid Donations** and **OpenMasjid Kiosk** flows in
+  automatically. Works fully on the masjid network on its own; parent, teacher and
+  finance access can also go over the OpenMasjidOS internet uplink.
+# ── Fabric capability flags ──────────────────────────────────────────────────
+sso: true                # platform admin opens it signed-in on the LAN
+notifications: true      # payment / autopay / admissions alerts to the masjid webhook
+stripe: true             # keys via GET /api/fabric/stripe — used for real charges (§13)
+https: true              # REQUIRED: the parent portal embeds Stripe Elements (secure context)
+tunnel: true             # request a public HTTPS uplink for parents/teachers/finance + webhooks
+fabric:                  # app-to-app broker: we PROVIDE students/billing (Donations/Kiosk consume it)
+  provides:
+    - capability: billing
+settings:
+  - key: SCHOOL_NAME
+    label: School name
+    type: text
+  - key: CURRENCY
+    label: Currency
+    type: select
+    options: [usd, cad, gbp, eur]
+    default: usd
+  - key: STRIPE_ACCOUNT
+    label: Stripe account for tuition payments
+    type: stripe-account
+ports:
+  - container: 8080
+    label: Web interface

@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="OpenMasjid Students">
+  <!-- Placeholder app icon: the family khatam (eight-pointed Islamic star) motif in
+       the OpenMasjid palette — geometric only, no sacred text (CLAUDE.md §9/§15).
+       Cyan #22D3EE primary + gold #F59E0B accent over deep navy #0A1828. Replace
+       with final artwork before listing in OpenMasjidAPPS. -->
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0F2040"/>
+      <stop offset="1" stop-color="#030D1A"/>
+    </linearGradient>
+    <linearGradient id="star" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#67E8F9"/>
+      <stop offset="1" stop-color="#22D3EE"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="512" height="512" rx="112" fill="url(#bg)"/>
+  <g transform="translate(256,256) scale(6)">
+    <polygon
+      points="0,-26 4.5,-9 21,-15 9,-2 26,0 9,2 21,15 4.5,9 0,26 -4.5,9 -21,15 -9,2 -26,0 -9,-2 -21,-15 -4.5,-9"
+      fill="url(#star)" opacity="0.95"/>
+    <rect x="-15" y="-15" width="30" height="30" transform="rotate(45)" fill="none"
+      stroke="#F59E0B" stroke-width="1.4" opacity="0.9"/>
+  </g>
+</svg>

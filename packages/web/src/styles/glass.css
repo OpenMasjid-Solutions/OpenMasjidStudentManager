@@ -1,0 +1,209 @@
+/* SPDX-License-Identifier: AGPL-3.0-only */
+/* Copyright (C) 2026 OpenMasjid-Solutions */
+/* Ported verbatim from OpenMasjidOS packages/ui/src/styles/glass.css @ c4d309f (v0.40.0) — keep structurally identical for re-sync (CLAUDE.md §15). See packages/web/PORTED_FROM_OPENMASJIDOS.md */
+/*
+ * glass.css — Sakīna Glass material + ambient utilities. Imported after
+ * Tailwind so these classes win ties. Every value is token-driven (tokens.css).
+ */
+
+/*
+ * Cursor refraction (Apple "liquid glass"): a small, tight, subtle specular
+ * highlight that follows the pointer (--mx/--my set in cursorFx.ts). Kept
+ * deliberately compact + low-intensity so it reads as light catching the glass,
+ * not a spotlight or a big oval. Only applied to compact panes (cards, dock) —
+ * cursorFx skips large flat panels, both for the look and to avoid repainting a
+ * huge surface every frame. Painted below content, so text never washes out.
+ */
+.glass {
+  position: relative;
+  border-radius: var(--radius-card);
+  background-image:
+    radial-gradient(7rem at var(--mx, -200%) var(--my, -200%), var(--glint), transparent 55%),
+    linear-gradient(var(--glass-tint), var(--glass-tint));
+  background-color: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  box-shadow: var(--glass-shadow);
+}
+
+.glass-raised {
+  position: relative;
+  border-radius: var(--radius-card);
+  background-image:
+    radial-gradient(7rem at var(--mx, -200%) var(--my, -200%), var(--glint), transparent 55%),
+    linear-gradient(var(--glass-tint), var(--glass-tint));
+  background-color: var(--glass-bg-raised);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  box-shadow: var(--glass-shadow-raised);
+}
+
+.glass-inset {
+  position: relative;
+  border-radius: var(--radius-button);
+  background-color: var(--glass-bg-inset);
+  -webkit-backdrop-filter: blur(var(--glass-blur-inset)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur-inset)) saturate(var(--glass-saturate));
+  box-shadow:
+    inset 0 1px 2px rgba(0, 0, 0, 0.25),
+    0 0 0 1px var(--glass-border);
+}
+
+.glass-dock {
+  position: relative;
+  background-image: linear-gradient(var(--glass-tint), var(--glass-tint));
+  background-color: var(--glass-bg-raised);
+  -webkit-backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate-strong));
+  backdrop-filter: blur(var(--glass-blur-strong)) saturate(var(--glass-saturate-strong));
+  box-shadow: var(--glass-shadow-raised);
+}
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass-dock { background-color: var(--color-surface-overlay); }
+}
+
+/* PERFORMANCE CAP — a glass pane inside a glass pane must not re-blur. */
+.glass :where(.glass, .glass-raised),
+.glass-raised :where(.glass, .glass-raised) {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+}
+.glass .glass-allow-nested-blur,
+.glass-raised .glass-allow-nested-blur {
+  -webkit-backdrop-filter: blur(var(--glass-blur-inset)) saturate(var(--glass-saturate));
+  backdrop-filter: blur(var(--glass-blur-inset)) saturate(var(--glass-saturate));
+}
+
+/* GLINT CAP — a glass pane nested inside a glinting pane (e.g. a card's ⋮ menu
+   inside an .fx-glint card) would INHERIT the parent's --mx/--my, which are
+   measured in the PARENT's coordinate box. Rendered in the child's own box the
+   refraction lands offset and seems to lag the cursor. Reset to the off-screen
+   default so the child carries no stray glint (cursorFx only drives .fx-glint). */
+.fx-glint :where(.glass, .glass-raised) {
+  --mx: -200%;
+  --my: -200%;
+}
+
+/* FALLBACK — opaque fills when backdrop-filter is unsupported. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .glass        { background-color: var(--color-surface-raised); }
+  .glass-raised { background-color: var(--color-surface-overlay); }
+  .glass-inset  { background-color: var(--color-surface); }
+}
+
+/* Accent glow — a soft colored bloom behind a primary/active element. */
+.glow-accent {
+  position: relative;
+  isolation: isolate;
+}
+.glow-accent::before {
+  content: "";
+  position: absolute;
+  inset: -28%;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(circle, var(--color-primary-subtle), transparent 70%);
+  background: radial-gradient(circle,
+    color-mix(in srgb, var(--color-primary) calc(var(--glow-strength) * 100%), transparent),
+    transparent 70%);
+  filter: blur(20px);
+  opacity: var(--glow-strength);
+}
+.glow-accent--gold::before {
+  background: radial-gradient(circle, var(--color-gold-subtle), transparent 70%);
+  background: radial-gradient(circle,
+    color-mix(in srgb, var(--color-gold) calc(var(--glow-strength) * 100%), transparent),
+    transparent 70%);
+}
+
+/* Live status dot — heartbeat glow; state conveyed by color + label, not motion. */
+.status-dot {
+  position: relative;
+  width: 0.625rem;
+  height: 0.625rem;
+  border-radius: 50%;
+  background: var(--color-success);
+  flex-shrink: 0;
+}
+.status-dot--error { background: var(--color-danger); }
+.status-dot--idle { background: var(--color-ink-faint); }
+.status-dot::after {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+    color-mix(in srgb, var(--color-success) 55%, transparent), transparent 70%);
+  animation: pulseGlow 2.4s ease-in-out infinite;
+}
+.status-dot--error::after {
+  background: radial-gradient(circle,
+    color-mix(in srgb, var(--color-danger) 55%, transparent), transparent 70%);
+}
+.status-dot--idle::after { content: none; }
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.45; transform: scale(0.85); }
+  50%      { opacity: 1;    transform: scale(1.15); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-dot::after { animation: none; opacity: 0.8; transform: scale(1); }
+}
+
+/* ── Liquid-glass refractive edge ──────────────────────────────────────────
+   A 1px light-catching ring around glass panes (bright top-left → faint
+   bottom-right), drawn with the padding + mask-exclude technique so only the
+   border shows. Purely decorative; on engines without mask-composite it simply
+   doesn't render. This is what gives the panes their "wet glass" edge. */
+/* The mask-composite ring is GPU-pricey, so we draw it only on the elevated,
+   low-count surfaces (dock + raised panes/clock/modals) where the "wet glass"
+   edge reads most. The many base .glass cards keep their cheaper box-shadow edge
+   (border + top highlight from --glass-shadow) instead — a tiny visual trade for
+   a big drop in mask-composite passes on a Pi. */
+.glass-raised::after,
+.glass-dock::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  pointer-events: none;
+  z-index: 1;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.55),
+    rgba(255, 255, 255, 0.05) 32%,
+    transparent 52%,
+    rgba(255, 255, 255, 0.12)
+  );
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  mask-composite: exclude;
+  opacity: 0.65;
+}
+[data-theme="light"] .glass-raised::after,
+[data-theme="light"] .glass-dock::after {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.95),
+    rgba(255, 255, 255, 0.3) 32%,
+    transparent 52%,
+    rgba(2, 132, 199, 0.12)
+  );
+}
+
+/* Full-screen custom wallpaper image (Settings → custom image URL). */
+.scene--image {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+/* A custom image is the whole wallpaper — drop the aurora AND the geometric
+   khatam pattern overlay entirely so nothing sits on top of the image. */
+.scene--image::before { display: none; }
+.scene--image::after { display: none; }

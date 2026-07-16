@@ -1,0 +1,40 @@
+/* SPDX-License-Identifier: AGPL-3.0-only */
+/* Copyright (C) 2026 OpenMasjid-Solutions */
+/* App-specific shell styles (NOT ported). Uses the ported design tokens + logical
+   properties so it works LTR and RTL (CLAUDE.md §15/§16). */
+
+.shell-controls {
+  position: fixed;
+  inset-block-start: 1rem;
+  inset-inline-end: 1rem;
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  z-index: 20;
+}
+
+.shell-lang {
+  width: auto;
+  min-width: 7.5rem;
+  padding-block: 0.4rem;
+}
+
+/* A slim status line under the login card. */
+.shell-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.shell-status .dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 999px;
+  background: var(--color-ink-faint);
+}
+.shell-status.is-ok .dot {
+  background: var(--color-primary);
+  box-shadow: 0 0 0 3px var(--color-primary-subtle);
+}
+.shell-status.is-off .dot {
+  background: var(--color-danger, #f87171);
+}

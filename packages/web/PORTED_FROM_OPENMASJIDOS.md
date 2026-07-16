@@ -1,0 +1,53 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-only -->
+<!-- Copyright (C) 2026 OpenMasjid-Solutions -->
+
+# Design system ported from OpenMasjidOS
+
+Per `CLAUDE.md` §15 (UI parity is a hard requirement), the OpenMasjid family's shared
+**"liquid glass"** design system is copied **verbatim** from OpenMasjidOS `packages/ui`
+into this package. It is the same-org AGPL, so copying within OpenMasjid-Solutions repos
+is allowed and encouraged. **Keep these files structurally identical to upstream** so
+theme fixes can be re-synced; any deliberate deviation must carry a one-line comment
+explaining why.
+
+- **Upstream:** `OpenMasjid-Solutions/OpenMasjidOS` `packages/ui`
+- **Pinned at commit:** `c4d309f45bff4de500cfe10a5ff6edc12c39de01` (v0.40.0)
+- **Ported on:** 2026-07-15
+
+## Files copied verbatim (each carries a 3rd-line origin comment)
+
+| This package | Upstream path |
+|---|---|
+| `src/index.css` | `src/index.css` |
+| `src/styles/tokens.css` | `src/styles/tokens.css` |
+| `src/styles/glass.css` | `src/styles/glass.css` |
+| `src/styles/app.css` | `src/styles/app.css` |
+| `src/lib/motion.ts` | `src/lib/motion.ts` |
+| `src/lib/cursorFx.ts` | `src/lib/cursorFx.ts` |
+| `src/lib/ambient.ts` | `src/lib/ambient.ts` |
+| `src/lib/cn.ts` | `src/lib/cn.ts` |
+| `src/lib/prefs.ts` | `src/lib/prefs.ts` |
+| `src/components/Glyphs.tsx` | `src/components/Glyphs.tsx` |
+| `src/components/SceneBackground.tsx` | `src/components/SceneBackground.tsx` |
+| `src/assets/logo-mark.png` | `src/assets/logo-mark.png` |
+| `public/favicon.svg` | `public/favicon.svg` |
+
+## Deliberate additions / deviations (NOT from upstream)
+
+- **`public/fonts/Amiri-Regular.ttf`** (+ `LICENSE-Amiri-OFL.txt`) — the OFL **Amiri**
+  Naskh face, copied from `OpenMasjidDisplay/server/assets/fonts` (commit `72d0410`).
+  The family **web** UIs bundle no Arabic font (OS ships only Inter + Space Grotesk),
+  but this app needs Arabic-capable rendering for RTL and for report cards/transcripts
+  (`CLAUDE.md` §7/§15). Wired via `src/styles/fonts-arabic.css` (a NEW file, not ported)
+  so the ported CSS stays pristine.
+- **`src/lib/i18n/index.ts`** loads `en` + `ar` + `ur` (upstream ships `en` only). i18n
+  content is app-specific and not part of the re-syncable "theme".
+- **`ambient.mp4`** (OS's 5 MB looping backdrop) was **not** copied — the ambient toggle
+  has no default UI here and the scene falls back to the aurora gradient. Copy it later if
+  an ambient backdrop is wanted.
+
+## Re-syncing upstream theme fixes
+
+When OpenMasjidOS updates its theme, diff the upstream file against ours (ignoring the
+3rd-line origin comment) and reapply. Because we did not fork the structure, this stays a
+clean patch.

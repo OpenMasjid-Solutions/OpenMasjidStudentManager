@@ -1,0 +1,22 @@
+# Default: normalise all text files to LF — everything ends up in a Linux
+# container, and it keeps diffs against the OpenMasjidOS-ported files clean.
+* text=auto eol=lf
+
+# Files that must run inside the container / on Linux.
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+Dockerfile text eol=lf
+
+# Binary files — no line-ending conversion.
+*.png binary
+*.svg binary
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ttf binary
+*.otf binary
+*.woff binary
+*.woff2 binary
+*.mp4 binary

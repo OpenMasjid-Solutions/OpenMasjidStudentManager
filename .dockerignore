@@ -1,0 +1,15 @@
+**/node_modules
+**/dist
+**/data
+packages/server/public
+.git
+.github
+docs
+screenshots
+*.md
+.claude
+.vscode
+.idea
+npm-debug.log*
+.env
+.env.*

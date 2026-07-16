@@ -1,0 +1,31 @@
+{
+  "app": {
+    "name": "OpenMasjid Students",
+    "tagline": "مدرسے کا دفتر ایک ایپ میں"
+  },
+  "auth": {
+    "loginTitle": "خوش آمدید",
+    "loginSubtitle": "اپنے مدرسے کے دفتر میں سائن اِن کریں",
+    "username": "صارف نام",
+    "password": "پاس ورڈ",
+    "signIn": "سائن اِن",
+    "working": "سائن اِن ہو رہا ہے…",
+    "comingSoon": "سائن اِن اگلے مرحلے میں آئے گا — یہ ایپ کا خاکہ ہے۔"
+  },
+  "controls": {
+    "theme": "تھیم",
+    "language": "زبان"
+  },
+  "theme": {
+    "dark": "گہرا",
+    "light": "ہلکا",
+    "system": "سسٹم"
+  },
+  "status": {
+    "connecting": "منسلک ہو رہا ہے…",
+    "connected": "منسلک",
+    "offline": "سرور دستیاب نہیں",
+    "standalone": "خود مختار",
+    "linked": "OpenMasjidOS سے منسلک"
+  }
+}

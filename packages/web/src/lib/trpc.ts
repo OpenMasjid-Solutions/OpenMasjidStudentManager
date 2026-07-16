@@ -1,0 +1,21 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 OpenMasjid-Solutions
+/**
+ * Typed tRPC client. We import ONLY the server's AppRouter TYPE (CLAUDE.md §6, §8),
+ * so the UI is end-to-end type-safe with zero runtime coupling to the server bundle.
+ */
+import { createTRPCReact } from '@trpc/react-query';
+import { httpBatchLink } from '@trpc/client';
+import { QueryClient } from '@tanstack/react-query';
+import type { AppRouter } from '@openmasjid/students-server';
+
+export const trpc = createTRPCReact<AppRouter>();
+
+export const queryClient = new QueryClient({
+  defaultOptions: { queries: { refetchOnWindowFocus: false } },
+});
+
+// Same-origin in production; Vite proxies /trpc → the server (:8080) in dev.
+export const trpcClient = trpc.createClient({
+  links: [httpBatchLink({ url: '/trpc' })],
+});

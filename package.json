@@ -1,0 +1,27 @@
+{
+  "name": "openmasjidstudentmanager",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OpenMasjid Students — a self-hosted, madrasa-first school-management app (SIS, gradebook, exams, report cards, transcripts, admissions and tuition billing) that runs as an OpenMasjidOS app.",
+  "license": "AGPL-3.0-only",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "packages/server",
+    "packages/web"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n server,web -c cyan,magenta \"npm:dev -w @openmasjid/students-server\" \"npm:dev -w @openmasjid/students-web\"",
+    "build": "npm run build -w @openmasjid/students-web && npm run build -w @openmasjid/students-server",
+    "lint": "npm run lint -w @openmasjid/students-server && npm run lint -w @openmasjid/students-web",
+    "test": "npm run test -w @openmasjid/students-server --if-present && npm run test -w @openmasjid/students-web --if-present",
+    "generate": "npm run generate -w @openmasjid/students-server",
+    "image": "docker build -t ghcr.io/openmasjid-solutions/openmasjidstudentmanager:dev ."
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0",
+    "typescript": "^5.6.3"
+  }
+}

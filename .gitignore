@@ -1,0 +1,27 @@
+node_modules/
+dist/
+packages/*/dist/
+packages/server/public/
+
+# Local data volume (SQLite DB, attachments, generated report/transcript PDFs — minors' PII)
+data/
+packages/server/data/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor / OS
+.DS_Store
+Thumbs.db
+*.swp
+.vscode/settings.json
+.idea/
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+
+# Claude Code local settings (keep project settings, ignore local overrides)
+.claude/settings.local.json
