@@ -9,6 +9,19 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.9.0]
+
+### Added
+- **Merit points** (§4/§5) — very madrasa: teachers (and admin) **award or deduct** points to
+  students in their own classes against **admin-defined categories with default point values**.
+  Ships four editable defaults — **Ādāb, Sunnah practice, Hifz milestone, Helping others** —
+  seeded on first boot. A `MeritPanel` in the class window has the award form (category picks a
+  default, adjustable, negative allowed), a staff-side **leaderboard** of term totals, and the
+  recent awards with a one-tap **undo**; admin manages categories in **Settings → Merit categories**.
+  Teacher access is scoped to their own classes (via `classAccess`); finance never sees merit;
+  parents see their own kids in the portal (later). Awards are audited with no per-student PII.
+  5 new tests (91 total).
+
 ## [0.8.0]
 
 ### Added

@@ -471,3 +471,37 @@
   font-variant-numeric: tabular-nums;
   color: var(--color-primary);
 }
+
+/* ── Merit points ────────────────────────────────────────────────────────────
+   A leaderboard row + recent-award row. Point totals are semantic (green +, red −),
+   independent of the cyan accent; logical properties keep it RTL-correct. */
+.merit-row {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.4rem 0.7rem;
+  border-radius: var(--radius-button);
+}
+.merit-rank {
+  inline-size: 1.4rem;
+  text-align: center;
+  color: var(--color-ink-faint);
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+}
+.merit-name { flex: 1; }
+.merit-total {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  text-align: end;
+}
+.merit-total.is-pos { color: var(--color-success); }
+.merit-total.is-neg { color: var(--color-danger); }
+.merit-recent {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3rem 0.5rem;
+  font-size: 0.9rem;
+  flex-wrap: wrap;
+}

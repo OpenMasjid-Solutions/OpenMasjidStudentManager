@@ -9,6 +9,7 @@ import { trpc } from '../../lib/trpc';
 import { WeekGrid, type SessionRow } from '../../components/WeekGrid';
 import { AttendancePanel } from '../../components/AttendancePanel';
 import { GradebookPanel } from '../../components/GradebookPanel';
+import { MeritPanel } from '../../components/MeritPanel';
 
 export function TeacherClassDetail({ classId }: { classId: string }) {
   const { t } = useTranslation();
@@ -42,6 +43,9 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
 
       {/* Gradebook */}
       <GradebookPanel classId={cls.id} />
+
+      {/* Merit points */}
+      <MeritPanel classId={cls.id} />
 
       {/* Schedule */}
       <section className="section glass" style={{ padding: '1rem 1.1rem' }}>

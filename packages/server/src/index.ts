@@ -18,6 +18,7 @@ import { makeLog } from './logger';
 import { runMigrations } from './db';
 import { purgeExpiredSessions } from './auth/sessions';
 import { seedGradingDefaults } from './grades/scales';
+import { seedMeritDefaults } from './merit/categories';
 import { appRouter, type AppRouter } from './trpc/router';
 import { createContext } from './trpc/trpc';
 
@@ -30,6 +31,7 @@ async function main(): Promise<void> {
   // Apply committed migrations before accepting traffic, then clear stale sessions.
   runMigrations();
   seedGradingDefaults(); // the three shipped grading scales (idempotent)
+  seedMeritDefaults(); // the shipped merit categories (idempotent)
   purgeExpiredSessions();
 
   const app = Fastify({

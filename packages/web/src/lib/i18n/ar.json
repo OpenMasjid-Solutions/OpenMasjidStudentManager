@@ -159,6 +159,20 @@
     "retry": "أعد المحاولة",
     "confirmDelete": "حذف «{{title}}» وكل درجاته؟ لا يمكن التراجع."
   },
+  "merit": {
+    "title": "نقاط الجدارة",
+    "student": "الطالب",
+    "chooseStudent": "اختر طالباً…",
+    "category": "الفئة",
+    "chooseCategory": "اختر فئة…",
+    "points": "النقاط",
+    "note": "ملاحظة",
+    "notePlaceholder": "اختياري",
+    "award": "منح",
+    "leaderboard": "هذا الصف",
+    "recent": "الأحدث",
+    "noAwards": "لا توجد نقاط جدارة بعد."
+  },
   "profile": {
     "menu": "الحساب",
     "lightMode": "الوضع الفاتح",
@@ -234,7 +248,13 @@
     "options": "الخيارات",
     "optionsHint": "مفصولة بفواصل، مثل: مبتدئ، متوسط، متقدم",
     "addField": "إضافة حقل",
-    "archive": "إزالة"
+    "archive": "إزالة",
+    "meritCategories": "فئات الجدارة",
+    "meritCategoriesHint": "الفئات التي يمنح المعلمون النقاط مقابلها، لكل منها قيمة افتراضية (قابلة للتعديل عند المنح).",
+    "noMeritCategories": "لا توجد فئات جدارة بعد.",
+    "categoryName": "الفئة",
+    "defaultPoints": "النقاط الافتراضية",
+    "addCategory": "إضافة فئة"
   },
   "ftype": {
     "text": "نص",

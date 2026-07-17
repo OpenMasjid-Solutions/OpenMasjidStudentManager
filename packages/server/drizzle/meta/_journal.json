@@ -57,6 +57,13 @@
       "when": 1784253423025,
       "tag": "0007_certain_swordsman",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1784322732207,
+      "tag": "0008_cloudy_loa",
+      "breakpoints": true
     }
   ]
 }

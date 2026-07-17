@@ -520,3 +520,56 @@ export const grades = sqliteTable(
   }),
 );
 export type Grade = typeof grades.$inferSelect;
+
+// ── Merit points (slice: teacher tools) ──────────────────────────────────────
+
+/** Admin-defined merit categories with a default point value (§4). Ships with editable
+ *  defaults (Ādāb, Sunnah practice, Hifz milestone, Helping others). Soft-archived so past
+ *  awards keep their meaning. */
+export const meritCategories = sqliteTable('merit_categories', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  /** The default points suggested when awarding (may be adjusted per award). */
+  defaultPoints: integer('default_points').notNull().default(0),
+  isSystem: integer('is_system', { mode: 'boolean' }).notNull().default(false),
+  position: integer('position').notNull().default(0),
+  archivedAt: integer('archived_at', { mode: 'timestamp_ms' }),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+});
+export type MeritCategory = typeof meritCategories.$inferSelect;
+
+/** A merit award (or deduction) to a student in a class context (§4/§5). `points` is signed
+ *  (a deduction is negative). Append-only: corrections are a new award, never an edit. `termId`
+ *  is denormalized from the class at award time so term totals are a simple sum. All FKs are
+ *  RESTRICT (students/classes/categories are archived, never hard-deleted). */
+export const meritAwards = sqliteTable(
+  'merit_awards',
+  {
+    id: text('id').primaryKey(),
+    studentId: text('student_id')
+      .notNull()
+      .references(() => students.id, { onDelete: 'restrict' }),
+    classId: text('class_id')
+      .notNull()
+      .references(() => classes.id, { onDelete: 'restrict' }),
+    termId: text('term_id')
+      .notNull()
+      .references(() => terms.id, { onDelete: 'restrict' }),
+    categoryId: text('category_id')
+      .notNull()
+      .references(() => meritCategories.id, { onDelete: 'restrict' }),
+    points: integer('points').notNull(),
+    note: text('note'),
+    awardedByUserId: text('awarded_by_user_id'),
+    awardedByName: text('awarded_by_name'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({
+    studentIdx: index('merit_awards_student_idx').on(t.studentId),
+    classIdx: index('merit_awards_class_idx').on(t.classId),
+    termIdx: index('merit_awards_term_idx').on(t.termId),
+  }),
+);
+export type MeritAward = typeof meritAwards.$inferSelect;

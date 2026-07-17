@@ -159,6 +159,20 @@
     "retry": "Try again",
     "confirmDelete": "Delete “{{title}}” and all its scores? This can’t be undone."
   },
+  "merit": {
+    "title": "Merit points",
+    "student": "Student",
+    "chooseStudent": "Choose a student…",
+    "category": "Category",
+    "chooseCategory": "Choose a category…",
+    "points": "Points",
+    "note": "Note",
+    "notePlaceholder": "Optional",
+    "award": "Award",
+    "leaderboard": "This class",
+    "recent": "Recent",
+    "noAwards": "No merit points yet."
+  },
   "profile": {
     "menu": "Account",
     "lightMode": "Light mode",
@@ -234,7 +248,13 @@
     "options": "Options",
     "optionsHint": "Comma-separated, e.g. Beginner, Intermediate, Advanced",
     "addField": "Add field",
-    "archive": "Remove"
+    "archive": "Remove",
+    "meritCategories": "Merit categories",
+    "meritCategoriesHint": "Categories teachers award points against, each with a default value (editable per award).",
+    "noMeritCategories": "No merit categories yet.",
+    "categoryName": "Category",
+    "defaultPoints": "Default points",
+    "addCategory": "Add category"
   },
   "ftype": {
     "text": "Text",

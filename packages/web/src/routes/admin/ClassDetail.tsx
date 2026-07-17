@@ -7,6 +7,7 @@ import { trpc } from '../../lib/trpc';
 import { ClassScheduleEditor } from './ClassScheduleEditor';
 import { AttendancePanel } from '../../components/AttendancePanel';
 import { GradebookPanel } from '../../components/GradebookPanel';
+import { MeritPanel } from '../../components/MeritPanel';
 
 export function ClassDetail({ classId }: { classId: string }) {
   const { t } = useTranslation();
@@ -80,6 +81,9 @@ export function ClassDetail({ classId }: { classId: string }) {
 
       {/* Gradebook (admin also configures the class's grading scale) */}
       <GradebookPanel classId={classId} canConfigScale />
+
+      {/* Merit points */}
+      <MeritPanel classId={classId} />
 
       {/* Teachers */}
       <section className="section glass" style={{ padding: '1rem 1.1rem' }}>

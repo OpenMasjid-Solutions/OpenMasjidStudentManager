@@ -159,6 +159,20 @@
     "retry": "دوبارہ کوشش کریں",
     "confirmDelete": "«{{title}}» اور اس کے تمام نمبر حذف کریں؟ یہ واپس نہیں ہو سکتا۔"
   },
+  "merit": {
+    "title": "میرٹ پوائنٹس",
+    "student": "طالبِ علم",
+    "chooseStudent": "طالبِ علم منتخب کریں…",
+    "category": "زمرہ",
+    "chooseCategory": "زمرہ منتخب کریں…",
+    "points": "پوائنٹس",
+    "note": "نوٹ",
+    "notePlaceholder": "اختیاری",
+    "award": "دیں",
+    "leaderboard": "یہ کلاس",
+    "recent": "حالیہ",
+    "noAwards": "ابھی کوئی میرٹ پوائنٹس نہیں۔"
+  },
   "profile": {
     "menu": "اکاؤنٹ",
     "lightMode": "ہلکا موڈ",
@@ -234,7 +248,13 @@
     "options": "اختیارات",
     "optionsHint": "کوما سے جدا، مثلاً: مبتدی، درمیانہ، اعلیٰ",
     "addField": "خانہ شامل کریں",
-    "archive": "ہٹا دیں"
+    "archive": "ہٹا دیں",
+    "meritCategories": "میرٹ زمرے",
+    "meritCategoriesHint": "وہ زمرے جن پر اساتذہ پوائنٹس دیتے ہیں، ہر ایک کی ایک ڈیفالٹ قدر (دیتے وقت قابلِ ترمیم)۔",
+    "noMeritCategories": "ابھی کوئی میرٹ زمرہ نہیں۔",
+    "categoryName": "زمرہ",
+    "defaultPoints": "ڈیفالٹ پوائنٹس",
+    "addCategory": "زمرہ شامل کریں"
   },
   "ftype": {
     "text": "متن",
