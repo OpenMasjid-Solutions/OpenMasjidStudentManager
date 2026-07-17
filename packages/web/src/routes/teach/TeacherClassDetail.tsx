@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { trpc } from '../../lib/trpc';
 import { WeekGrid, type SessionRow } from '../../components/WeekGrid';
 import { AttendancePanel } from '../../components/AttendancePanel';
+import { GradebookPanel } from '../../components/GradebookPanel';
 
 export function TeacherClassDetail({ classId }: { classId: string }) {
   const { t } = useTranslation();
@@ -38,6 +39,9 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
 
       {/* Attendance — the teacher's daily tool */}
       <AttendancePanel classId={cls.id} />
+
+      {/* Gradebook */}
+      <GradebookPanel classId={cls.id} />
 
       {/* Schedule */}
       <section className="section glass" style={{ padding: '1rem 1.1rem' }}>

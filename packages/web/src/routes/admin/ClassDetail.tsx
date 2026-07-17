@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { trpc } from '../../lib/trpc';
 import { ClassScheduleEditor } from './ClassScheduleEditor';
 import { AttendancePanel } from '../../components/AttendancePanel';
+import { GradebookPanel } from '../../components/GradebookPanel';
 
 export function ClassDetail({ classId }: { classId: string }) {
   const { t } = useTranslation();
@@ -76,6 +77,9 @@ export function ClassDetail({ classId }: { classId: string }) {
 
       {/* Attendance */}
       <AttendancePanel classId={classId} />
+
+      {/* Gradebook (admin also configures the class's grading scale) */}
+      <GradebookPanel classId={classId} canConfigScale />
 
       {/* Teachers */}
       <section className="section glass" style={{ padding: '1rem 1.1rem' }}>

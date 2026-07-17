@@ -419,3 +419,55 @@
 @media (max-width: 520px) {
   .att-seg-label { display: none; }
 }
+
+/* ── Gradebook grid ──────────────────────────────────────────────────────────
+   Assignments as columns, students as rows; the table scrolls inside its own
+   overflow-x container so the window body never scrolls sideways. Compact score
+   inputs; a highlighted overall column. Logical properties keep it RTL-correct. */
+.gradebook-scale {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-inline-end: 0.5rem;
+}
+.gradebook-table th,
+.gradebook-table td {
+  white-space: nowrap;
+}
+.gradebook-col-head {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+.gradebook-col-title {
+  display: inline-block;
+  max-width: 8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.gradebook-col-sub {
+  display: block;
+  font-size: 0.68rem;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 400;
+}
+.gradebook-del {
+  color: var(--color-ink-faint);
+  display: inline-flex;
+}
+.gradebook-del:hover {
+  color: var(--color-danger);
+  text-decoration: none;
+}
+.grade-input {
+  width: 3.6rem;
+  padding: 0.3rem 0.4rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.gradebook-total {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-primary);
+}

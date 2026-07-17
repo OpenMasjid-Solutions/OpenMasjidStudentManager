@@ -9,6 +9,31 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.8.0]
+
+### Added
+- **Gradebook** (§4/§5/§9): assignments (grade items — title, out-of, optional category) and
+  student scores per class, from the class window. A spreadsheet-style grid (assignments ×
+  students) with per-cell save, a per-student **overall %** (total-points weighted) and its
+  **scale band**, plus a per-assignment class average. Only enrolled students can be scored;
+  scores are stored as integer hundredths of a point (no float drift). Admin **or** the assigned
+  teacher can grade (scoped via `classAccess`); finance/parent are refused; admin stays LAN-only.
+  Sensitive writes are audited with no per-student PII.
+- **Grading scales** (§4): admin-defined scales (band label + min %). Ships three editable
+  defaults — **Percentage**, **A–F**, and a madrasa scale **Mumtāz / Jayyid Jiddan / Jayyid /
+  Maqbūl / Rāsib** — seeded on first boot. Each class picks its scale (admin sets it; teachers
+  see it read-only). 8 new tests (86 total).
+
+### Fixed (from an adversarial review of the slice)
+- **`itemUpdate` can no longer lower an assignment's maximum below an already-entered score**
+  (which would push a student over 100% and skew the band) — it's rejected with a friendly message.
+- **Score-save errors are surfaced** to the teacher (over-max, etc.) instead of being silently
+  swallowed, with an instant client-side over-max hint.
+- **`scaleArchive`** now returns a clean *not found* (and writes no phantom audit entry) for a
+  missing scale, matching its sibling mutations.
+- A failed gradebook load now shows a friendly error with **Try again** instead of a stuck
+  "Loading…"; deleting an assignment (which removes its scores) now **asks for confirmation**.
+
 ## [0.7.0]
 
 ### Added

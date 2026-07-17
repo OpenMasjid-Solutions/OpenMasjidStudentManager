@@ -424,3 +424,99 @@ export const attendance = sqliteTable(
   }),
 );
 export type Attendance = typeof attendance.$inferSelect;
+
+// ── Gradebook (slice: teacher tools) ─────────────────────────────────────────
+
+/** An admin-defined grading scale (§4): a set of bands (label + min %). Ships with three
+ *  editable defaults — Percentage, A–F, and a madrasa scale (Mumtāz … Rāsib) — seeded on
+ *  first boot. Soft-archived so a class that still points at it keeps meaning. */
+export const gradingScales = sqliteTable('grading_scales', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  /** Marks a shipped default (still fully editable). */
+  isSystem: integer('is_system', { mode: 'boolean' }).notNull().default(false),
+  archivedAt: integer('archived_at', { mode: 'timestamp_ms' }),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+});
+export type GradingScale = typeof gradingScales.$inferSelect;
+
+/** A band within a scale: a label shown for any percentage >= minPercent (§4). */
+export const scaleBands = sqliteTable(
+  'scale_bands',
+  {
+    id: text('id').primaryKey(),
+    scaleId: text('scale_id')
+      .notNull()
+      .references(() => gradingScales.id, { onDelete: 'cascade' }),
+    label: text('label').notNull(),
+    minPercent: integer('min_percent').notNull(), // 0–100
+    position: integer('position').notNull().default(0),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({ scaleIdx: index('scale_bands_scale_idx').on(t.scaleId) }),
+);
+export type ScaleBand = typeof scaleBands.$inferSelect;
+
+/** Per-class grading config. v1: which scale the class uses (final-grade formula weights
+ *  land in a later slice — this row already owns the class↔scale link). One row per class. */
+export const classGradeConfig = sqliteTable(
+  'class_grade_config',
+  {
+    classId: text('class_id')
+      .primaryKey()
+      .references(() => classes.id, { onDelete: 'cascade' }),
+    scaleId: text('scale_id').references(() => gradingScales.id, { onDelete: 'set null' }),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+);
+export type ClassGradeConfig = typeof classGradeConfig.$inferSelect;
+
+/** A gradebook assignment/assessment for a class (§4): title, date, max points, optional
+ *  category. Scores live in `grades`. Deleting an item cascades its scores (a unit); an
+ *  append-only snapshot history arrives in a later slice. FK to class is RESTRICT. */
+export const gradeItems = sqliteTable(
+  'grade_items',
+  {
+    id: text('id').primaryKey(),
+    classId: text('class_id')
+      .notNull()
+      .references(() => classes.id, { onDelete: 'restrict' }),
+    title: text('title').notNull(),
+    date: text('date'), // ISO date (optional)
+    maxPoints: integer('max_points').notNull(), // > 0
+    category: text('category'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({ classIdx: index('grade_items_class_idx').on(t.classId) }),
+);
+export type GradeItem = typeof gradeItems.$inferSelect;
+
+/** A student's score on one grade item. `points` is a number (decimals allowed, e.g. 8.5/10);
+ *  no row = not yet graded. UNIQUE per (item, student) so a save is an upsert. Scores cascade
+ *  if the item is deleted; student FK is RESTRICT (students are withdrawn, never hard-deleted). */
+export const grades = sqliteTable(
+  'grades',
+  {
+    id: text('id').primaryKey(),
+    gradeItemId: text('grade_item_id')
+      .notNull()
+      .references(() => gradeItems.id, { onDelete: 'cascade' }),
+    studentId: text('student_id')
+      .notNull()
+      .references(() => students.id, { onDelete: 'restrict' }),
+    points: integer('points').notNull(), // stored ×100 (two decimals) to avoid float drift
+    markedByUserId: text('marked_by_user_id'),
+    markedByName: text('marked_by_name'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({
+    uq: unique('grades_uq').on(t.gradeItemId, t.studentId),
+    itemIdx: index('grades_item_idx').on(t.gradeItemId),
+    studentIdx: index('grades_student_idx').on(t.studentId),
+  }),
+);
+export type Grade = typeof grades.$inferSelect;

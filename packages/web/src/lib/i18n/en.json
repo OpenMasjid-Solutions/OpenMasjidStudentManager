@@ -142,6 +142,23 @@
     "absent": "Absent",
     "excused": "Excused"
   },
+  "gradebook": {
+    "title": "Gradebook",
+    "scale": "Scale",
+    "noScale": "No scale (percent only)",
+    "addItem": "Add assignment",
+    "itemTitle": "Title",
+    "maxPoints": "Out of",
+    "noItems": "No assignments yet. Add one to start grading.",
+    "student": "Student",
+    "avg": "avg",
+    "overall": "Overall",
+    "overMax": "That score is above the maximum of {{max}}.",
+    "saveFailed": "That score couldn’t be saved. Please try again.",
+    "loadError": "Couldn’t load the gradebook.",
+    "retry": "Try again",
+    "confirmDelete": "Delete “{{title}}” and all its scores? This can’t be undone."
+  },
   "profile": {
     "menu": "Account",
     "lightMode": "Light mode",
