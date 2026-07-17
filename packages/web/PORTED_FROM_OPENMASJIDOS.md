@@ -29,8 +29,21 @@ explaining why.
 | `src/lib/prefs.ts` | `src/lib/prefs.ts` |
 | `src/components/Glyphs.tsx` | `src/components/Glyphs.tsx` |
 | `src/components/SceneBackground.tsx` | `src/components/SceneBackground.tsx` |
+| `src/components/ErrorBoundary.tsx` | `src/components/ErrorBoundary.tsx` |
+| `src/components/Clock.tsx` | `src/components/Clock.tsx` |
+| `src/components/Windows.tsx` (window manager context) | `src/components/Windows.tsx` |
+| `src/components/WindowManager.tsx` (mac-style window frames) | `src/components/WindowManager.tsx` |
 | `src/assets/logo-mark.png` | `src/assets/logo-mark.png` |
 | `public/favicon.svg` | `public/favicon.svg` |
+
+## Adapted from upstream (structure mirrored, logic simplified)
+
+- **`src/components/AppShell.tsx`**, **`Dock.tsx`**, **`ProfileMenu.tsx`** — modelled on the
+  OpenMasjidOS equivalents (same `.dock`/`.topbar`/`.menu` classes, same window+dock shell),
+  but simplified for an app rather than the platform: nav is a small state-driven section set
+  (no react-router, no installed-app pinning/drag), ProfileMenu has no platform `system.info`
+  (version from `health`). They intentionally diverge, so they carry a normal SPDX header (not
+  the verbatim origin comment).
 
 ## Deliberate additions / deviations (NOT from upstream)
 

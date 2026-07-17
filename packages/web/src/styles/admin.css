@@ -211,3 +211,48 @@
 .link-btn:hover {
   text-decoration: underline;
 }
+
+/* Page container inside the shell's <main>. */
+.page {
+  width: 100%;
+  max-width: 1040px;
+  margin-inline: auto;
+  padding-block-end: 6rem; /* clear the floating dock */
+}
+
+/* Window body content — the .win-body already pads; sections stack with a gap. */
+.win-content {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: min(38rem, 82vw);
+}
+
+/* Dashboard stat tiles. */
+.stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  align-items: flex-start;
+  padding: 1.1rem 1.2rem;
+  border: none;
+  font: inherit;
+  color: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+.stat-icon {
+  color: var(--color-primary);
+  display: inline-flex;
+}
+.stat-value {
+  font-family: var(--font-display);
+  font-size: 1.7rem;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+.stat-label {
+  color: var(--color-ink-muted);
+  font-size: 0.85rem;
+}

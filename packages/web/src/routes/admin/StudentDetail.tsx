@@ -4,9 +4,7 @@
  *  incident/disciplinary records (with the per-incident "visible to parents" toggle,
  *  default OFF). Admin-only screen. */
 import { useState, useEffect, type FormEvent } from 'react';
-import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { fadeRise } from '../../lib/motion';
 import { trpc } from '../../lib/trpc';
 
 interface StudentLite {
@@ -17,7 +15,7 @@ interface StudentLite {
   status: 'active' | 'withdrawn';
 }
 
-export function StudentDetail({ student, onBack }: { student: StudentLite; onBack: () => void }) {
+export function StudentDetail({ student }: { student: StudentLite }) {
   const { t } = useTranslation();
   const utils = trpc.useUtils();
   const studentId = student.id;
@@ -77,12 +75,11 @@ export function StudentDetail({ student, onBack }: { student: StudentLite; onBac
   const fmtDate = (ms: number) => new Date(ms).toLocaleDateString();
 
   return (
-    <motion.div variants={fadeRise} initial="initial" animate="animate">
-      <button type="button" className="back-link" onClick={onBack}>← {t('common.back')}</button>
-      <div className="admin-header">
-        <h1 className="page-title" style={{ fontSize: '1.5rem' }}>{student.firstName} {student.lastName}</h1>
-        <span className="spacer" />
-        <span className="pin" title={t('directory.pin')}>{student.pin}</span>
+    <div className="win-content">
+      <div className="admin-header" style={{ marginBlockEnd: '1rem' }}>
+        <span className="muted">{t('directory.pin')}</span>
+        <span className="pin" style={{ marginInlineStart: '0.5rem' }}>{student.pin}</span>
+        {student.status === 'withdrawn' && <span className="chip is-muted" style={{ marginInlineStart: '0.75rem' }}>{t('directory.withdrawn')}</span>}
       </div>
 
       {/* Custom fields */}
@@ -183,6 +180,6 @@ export function StudentDetail({ student, onBack }: { student: StudentLite; onBac
           </form>
         )}
       </section>
-    </motion.div>
+    </div>
   );
 }

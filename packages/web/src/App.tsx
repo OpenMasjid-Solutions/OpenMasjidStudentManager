@@ -15,6 +15,7 @@ import { fadeRise } from './lib/motion';
 import { Setup } from './routes/Setup';
 import { Login } from './routes/Login';
 import { Home } from './routes/Home';
+import { ChangePassword } from './routes/ChangePassword';
 import { AdminApp } from './routes/admin/AdminApp';
 import { trpc } from './lib/trpc';
 
@@ -37,15 +38,23 @@ export function App() {
   const health = trpc.health.useQuery(undefined, { retry: false });
   const s = session.data;
 
-  // The admin dashboard is a full-screen app (its own topbar); everything else uses the
-  // centered auth-wrap. Other roles get a placeholder until their dashboards land.
-  if (!session.isLoading && !session.isError && s?.authenticated && s.user?.role === 'admin') {
+  // Forced password change (staff temp password / after an admin reset) blocks everything.
+  if (!session.isLoading && !session.isError && s?.authenticated && s.user?.mustChangePassword) {
     return (
       <>
         <SceneBackground />
-        <AdminApp />
+        <ShellControls />
+        <div className="auth-wrap">
+          <ChangePassword />
+        </div>
       </>
     );
+  }
+
+  // The admin dashboard is a full-screen app (its own topbar); everything else uses the
+  // centered auth-wrap. Other roles get a placeholder until their dashboards land.
+  if (!session.isLoading && !session.isError && s?.authenticated && s.user?.role === 'admin') {
+    return <AdminApp />; // AppShell renders its own SceneBackground + dock + windows
   }
 
   let screen: React.ReactNode;

@@ -9,6 +9,29 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.5.0]
+
+### Changed
+- **UI now uses the OpenMasjid family shell** (§15 — continuity with Kiosk / OpenMasjidOS /
+  Display): the admin app has a top bar (brand + glass clock + profile menu), a **bottom
+  dock** for navigation, and records (a family, a student, a class) open as **draggable
+  macOS-style windows** — traffic-light controls, minimize-to-dock, stacking. Ported the
+  shell from OpenMasjidOS (AppShell / Dock / WindowManager / Windows / Clock / ErrorBoundary;
+  ProfileMenu adapted). Replaces the earlier bespoke topbar-nav so a masjid admin can't tell
+  they left the platform.
+
+### Added
+- **Classes & scheduling groundwork** (§4): academic **terms** (one marked current),
+  **classes** with a type (maktab / hifz / nazrah / ʿālim / custom) + an ordered, free-text
+  **subject** list, **teacher assignment**, and **student enrollments** per class
+  (withdraw / re-enroll). A **Dashboard** with live counts. Admin-only; teacher views +
+  scoping + the weekly timetable come next.
+- **Staff accounts** (§12): admin creates teacher/finance users with a temporary password;
+  a **forced password change** on first sign-in; enable/disable (a disabled account's live
+  sessions are revoked on the next request, via the session user re-check). 8 new tests
+  (60 total): terms/classes/enrollments, teacher assignment (finance rejected), staff
+  role walls, and the change-password flow.
+
 ## [0.4.0]
 
 ### Added

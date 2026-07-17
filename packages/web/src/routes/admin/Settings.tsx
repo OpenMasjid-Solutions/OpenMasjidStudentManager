@@ -35,7 +35,7 @@ export function Settings() {
   }
 
   return (
-    <motion.div variants={fadeRise} initial="initial" animate="animate">
+    <motion.div className="page" variants={fadeRise} initial="initial" animate="animate">
       <div className="admin-header">
         <h1 className="page-title" style={{ fontSize: '1.5rem' }}>{t('settings.title')}</h1>
       </div>

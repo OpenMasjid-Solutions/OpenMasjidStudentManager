@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 OpenMasjid-Solutions
-/** One family's record: students (with PIN + regenerate + withdraw), guardians,
- *  emergency contacts — with inline add forms. Admin-only screen. */
+/** One family's record (window content): students (PIN + regenerate + withdraw),
+ *  guardians, emergency contacts. Clicking a student opens their record window. */
 import { useState, type FormEvent } from 'react';
-import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { fadeRise } from '../../lib/motion';
 import { trpc } from '../../lib/trpc';
+import { useWindows } from '../../components/Windows';
+import { StudentDetail } from './StudentDetail';
 
 export interface StudentLite {
   id: string;
@@ -16,9 +16,10 @@ export interface StudentLite {
   status: 'active' | 'withdrawn';
 }
 
-export function FamilyDetail({ familyId, onBack, onOpenStudent }: { familyId: string; onBack: () => void; onOpenStudent: (s: StudentLite) => void }) {
+export function FamilyDetail({ familyId }: { familyId: string }) {
   const { t } = useTranslation();
   const utils = trpc.useUtils();
+  const { open } = useWindows();
   const q = trpc.people.familyGet.useQuery({ id: familyId });
 
   const refresh = async () => {
@@ -38,6 +39,10 @@ export function FamilyDetail({ familyId, onBack, onOpenStudent }: { familyId: st
   const [grd, setGrd] = useState({ name: '', phone: '', email: '', relation: '', emergency: false });
   const [showEC, setShowEC] = useState(false);
   const [ec, setEc] = useState({ name: '', phone: '', relation: '' });
+
+  function openStudent(s: StudentLite) {
+    open({ title: `${s.firstName} ${s.lastName}`, wide: true, dedupeKey: `student:${s.id}`, node: <StudentDetail student={s} /> });
+  }
 
   async function submitStudent(e: FormEvent) {
     e.preventDefault();
@@ -72,23 +77,11 @@ export function FamilyDetail({ familyId, onBack, onOpenStudent }: { familyId: st
     await refresh();
   }
 
-  if (q.isLoading || !q.data) {
-    return (
-      <>
-        <button type="button" className="back-link" onClick={onBack}>← {t('common.back')}</button>
-        <p className="empty">{t('common.loading')}</p>
-      </>
-    );
-  }
-  const { family, students, guardians, emergencyContacts } = q.data;
+  if (q.isLoading || !q.data) return <p className="empty">{t('common.loading')}</p>;
+  const { students, guardians, emergencyContacts } = q.data;
 
   return (
-    <motion.div variants={fadeRise} initial="initial" animate="animate">
-      <button type="button" className="back-link" onClick={onBack}>← {t('directory.title')}</button>
-      <div className="admin-header">
-        <h1 className="page-title" style={{ fontSize: '1.5rem' }}>{family.name}</h1>
-      </div>
-
+    <div className="win-content">
       {/* Students */}
       <section className="section glass" style={{ padding: '1rem 1.1rem' }}>
         <div className="section-head">
@@ -101,19 +94,12 @@ export function FamilyDetail({ familyId, onBack, onOpenStudent }: { familyId: st
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table className="data-table">
-              <thead>
-                <tr>
-                  <th>{t('directory.name')}</th>
-                  <th>{t('directory.pin')}</th>
-                  <th>{t('directory.status')}</th>
-                  <th className="actions" />
-                </tr>
-              </thead>
+              <thead><tr><th>{t('directory.name')}</th><th>{t('directory.pin')}</th><th>{t('directory.status')}</th><th className="actions" /></tr></thead>
               <tbody>
                 {students.map((s) => (
                   <tr key={s.id}>
                     <td>
-                      <button type="button" className="link-btn" onClick={() => onOpenStudent({ id: s.id, firstName: s.firstName, lastName: s.lastName, pin: s.pin, status: s.status })}>
+                      <button type="button" className="link-btn" onClick={() => openStudent({ id: s.id, firstName: s.firstName, lastName: s.lastName, pin: s.pin, status: s.status })}>
                         {s.firstName} {s.lastName}
                       </button>
                     </td>
@@ -121,9 +107,7 @@ export function FamilyDetail({ familyId, onBack, onOpenStudent }: { familyId: st
                     <td>{s.status === 'withdrawn' ? <span className="chip is-muted">{t('directory.withdrawn')}</span> : <span className="chip">{t('directory.active')}</span>}</td>
                     <td className="actions">
                       <button type="button" className="btn btn--ghost btn--sm" onClick={() => regenerate(s.id)} disabled={regen.isPending}>{t('directory.regeneratePin')}</button>
-                      <button type="button" className="btn btn--ghost btn--sm" onClick={() => toggleWithdraw(s.id, s.status)} disabled={updateStudent.isPending}>
-                        {s.status === 'active' ? t('directory.withdraw') : t('directory.reinstate')}
-                      </button>
+                      <button type="button" className="btn btn--ghost btn--sm" onClick={() => toggleWithdraw(s.id, s.status)} disabled={updateStudent.isPending}>{s.status === 'active' ? t('directory.withdraw') : t('directory.reinstate')}</button>
                     </td>
                   </tr>
                 ))}
@@ -152,7 +136,7 @@ export function FamilyDetail({ familyId, onBack, onOpenStudent }: { familyId: st
         {guardians.length === 0 ? (
           <p className="muted" style={{ fontSize: '0.9rem' }}>{t('directory.noGuardians')}</p>
         ) : (
-          <div className="chip-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {guardians.map((g) => (
               <div key={g.guardianId} className="glass-inset" style={{ padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-button)', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <strong>{g.name}</strong>
@@ -188,7 +172,7 @@ export function FamilyDetail({ familyId, onBack, onOpenStudent }: { familyId: st
         {emergencyContacts.length === 0 ? (
           <p className="muted" style={{ fontSize: '0.9rem' }}>{t('directory.noContacts')}</p>
         ) : (
-          <div className="chip-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '0.5rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             {emergencyContacts.map((c) => (
               <div key={c.id} className="glass-inset" style={{ padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-button)' }}>
                 <strong>{c.name}</strong>
@@ -207,6 +191,6 @@ export function FamilyDetail({ familyId, onBack, onOpenStudent }: { familyId: st
           </form>
         )}
       </section>
-    </motion.div>
+    </div>
   );
 }

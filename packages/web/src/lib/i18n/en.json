@@ -23,7 +23,12 @@
     "pwStrong": "Strong",
     "adminTunnelNote": "Admin sign-in only works on the masjid network. Teachers, finance and parents can sign in from anywhere.",
     "setupOnLanTitle": "Almost there",
-    "setupOnLanBody": "Set up the admin account from a device on the masjid’s own Wi-Fi — for safety, the first admin can’t be created over the internet."
+    "setupOnLanBody": "Set up the admin account from a device on the masjid’s own Wi-Fi — for safety, the first admin can’t be created over the internet.",
+    "currentPassword": "Current password",
+    "newPassword": "New password",
+    "changeTitle": "Set a new password",
+    "changeSubtitle": "Please choose a new password to continue.",
+    "changeSubmit": "Update password"
   },
   "home": {
     "title": "You’re signed in",
@@ -34,7 +39,8 @@
   "common": {
     "save": "Save",
     "back": "Back",
-    "loading": "Loading…"
+    "loading": "Loading…",
+    "close": "Close"
   },
   "directory": {
     "title": "Directory",
@@ -70,8 +76,77 @@
     "noContacts": "No emergency contacts"
   },
   "nav": {
+    "dashboard": "Dashboard",
     "directory": "Directory",
-    "settings": "Settings"
+    "classes": "Classes",
+    "staff": "Staff",
+    "settings": "Settings",
+    "primary": "Primary navigation"
+  },
+  "profile": {
+    "menu": "Account",
+    "lightMode": "Light mode",
+    "darkMode": "Dark mode",
+    "signOut": "Sign out"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "welcome": "As-salāmu ʿalaykum",
+    "welcomeBody": "Manage your madrasa — families, students, classes and records. Pick a section below.",
+    "students": "Active students",
+    "families": "Families",
+    "classes": "Active classes",
+    "term": "Current term"
+  },
+  "classes": {
+    "addTerm": "Add term",
+    "termName": "Term name",
+    "current": "current",
+    "setCurrentHint": "Double-click to make this the current term",
+    "addClass": "Add class",
+    "className": "Class name",
+    "classType": "Type",
+    "customLabel": "Custom type label",
+    "scheduleLabel": "Schedule",
+    "noTerms": "Add a term to start creating classes.",
+    "noClasses": "No classes in this term yet.",
+    "subjects": "Subjects",
+    "subjectsHint": "Comma-separated, e.g. Sabaq, Sabqī, Manzil, Tajwīd",
+    "noSubjects": "No subjects yet.",
+    "teachers": "Teachers",
+    "noTeachers": "No teachers assigned.",
+    "addTeacher": "Assign a teacher",
+    "chooseTeacher": "Choose a teacher…",
+    "assign": "Assign",
+    "remove": "Remove",
+    "roster": "Roster",
+    "noRoster": "No students enrolled.",
+    "enroll": "Enroll",
+    "unenroll": "Remove",
+    "chooseStudent": "Choose a student…"
+  },
+  "ctype": {
+    "maktab": "Maktab",
+    "hifz": "Hifz",
+    "nazrah": "Nazrah",
+    "alim": "ʿĀlim course",
+    "custom": "Custom"
+  },
+  "staff": {
+    "title": "Staff",
+    "add": "Add staff",
+    "username": "Username",
+    "name": "Name",
+    "role": "Role",
+    "phone": "Phone",
+    "tempPassword": "Temporary password",
+    "tempHint": "At least 12 characters — changed on first sign-in",
+    "tempPw": "Temp password",
+    "disabled": "Disabled",
+    "disable": "Disable",
+    "enable": "Enable",
+    "noStaff": "No staff accounts yet.",
+    "formHint": "Enter a username and a temporary password of at least 12 characters."
   },
   "settings": {
     "title": "Settings",

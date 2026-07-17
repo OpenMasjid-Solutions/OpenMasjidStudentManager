@@ -11,7 +11,7 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { eq } from 'drizzle-orm';
-import { router, publicProcedure } from './trpc';
+import { router, publicProcedure, protectedProcedure } from './trpc';
 import { db } from '../db';
 import { users, type Role } from '../db/schema';
 import { rid } from '../db/ids';
@@ -37,11 +37,17 @@ export const authRouter = router({
       if (ctx.session.role === 'admin' && ctx.origin === 'tunnel') {
         return { authenticated: false as const, setupRequired: false, origin: ctx.origin, adminBlocked: true };
       }
+      // Surface the forced-password-change flag so the UI can gate (staff temp passwords).
+      let mustChangePassword = false;
+      if (ctx.session.userId) {
+        const u = db.select({ m: users.mustChangePassword }).from(users).where(eq(users.id, ctx.session.userId)).get();
+        mustChangePassword = !!u?.m;
+      }
       return {
         authenticated: true as const,
         origin: ctx.origin,
         setupRequired: false,
-        user: { role: ctx.session.role, username: ctx.session.username ?? undefined, source: ctx.session.source },
+        user: { role: ctx.session.role, username: ctx.session.username ?? undefined, source: ctx.session.source, mustChangePassword },
       };
     }
 
@@ -55,7 +61,7 @@ export const authRouter = router({
           authenticated: true as const,
           origin: ctx.origin,
           setupRequired: false,
-          user: { role: 'admin' as Role, username: probe.username, source: 'sso' as const },
+          user: { role: 'admin' as Role, username: probe.username, source: 'sso' as const, mustChangePassword: false },
         };
       }
     }
@@ -135,4 +141,18 @@ export const authRouter = router({
     ctx.res.clearCookie(COOKIE, { path: '/' });
     return { ok: true as const };
   }),
+
+  /** Change your own password (used for the forced change on a staff temp password). */
+  changePassword: protectedProcedure
+    .input(z.object({ currentPassword: PASSWORD, newPassword: z.string().min(MIN_PASSWORD_LENGTH).max(200) }))
+    .mutation(async ({ ctx, input }) => {
+      const userId = ctx.session.userId;
+      if (!userId) throw new TRPCError({ code: 'BAD_REQUEST', message: 'There is no local password to change for this session.' });
+      const user = db.select().from(users).where(eq(users.id, userId)).get();
+      if (!user || !(await verifyPassword(user.passwordHash, input.currentPassword))) {
+        throw new TRPCError({ code: 'UNAUTHORIZED', message: 'Your current password is incorrect.' });
+      }
+      db.update(users).set({ passwordHash: await hashPassword(input.newPassword), mustChangePassword: false, updatedAt: new Date() }).where(eq(users.id, userId)).run();
+      return { ok: true as const };
+    }),
 });

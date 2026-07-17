@@ -37,6 +37,9 @@ export const users = sqliteTable('users', {
   role: text('role').$type<Role>().notNull(),
   status: text('status').$type<'active' | 'disabled'>().notNull().default('active'),
   displayName: text('display_name'),
+  /** Staff contact + admin-only notes (§4 staff profiles). */
+  phone: text('phone'),
+  staffNotes: text('staff_notes'),
   /** Staff are forced to set a new password on first login (CLAUDE.md §12). */
   mustChangePassword: integer('must_change_password', { mode: 'boolean' }).notNull().default(false),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
@@ -269,3 +272,98 @@ export const incidents = sqliteTable(
   (t) => ({ studentIdx: index('incidents_student_idx').on(t.studentId) }),
 );
 export type Incident = typeof incidents.$inferSelect;
+
+// ── Classes & scheduling (slice 5) ───────────────────────────────────────────
+
+export type ClassType = 'maktab' | 'hifz' | 'nazrah' | 'alim' | 'custom';
+
+/** An academic term. `isCurrent` marks the one the admin is working in. */
+export const terms = sqliteTable('terms', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  startDate: text('start_date'), // ISO date (optional)
+  endDate: text('end_date'),
+  isCurrent: integer('is_current', { mode: 'boolean' }).notNull().default(false),
+  status: text('status').$type<'active' | 'archived'>().notNull().default('active'),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+});
+export type Term = typeof terms.$inferSelect;
+
+/** A class the madrasa runs — free-text name + a `type` that drives filtering and
+ *  report/transcript headers (custom carries its own label). Archived, not deleted. */
+export const classes = sqliteTable(
+  'classes',
+  {
+    id: text('id').primaryKey(),
+    termId: text('term_id')
+      .notNull()
+      .references(() => terms.id, { onDelete: 'restrict' }),
+    name: text('name').notNull(),
+    type: text('type').$type<ClassType>().notNull(),
+    customLabel: text('custom_label'), // when type = custom
+    scheduleLabel: text('schedule_label'),
+    status: text('status').$type<'active' | 'archived'>().notNull().default('active'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({ termIdx: index('classes_term_idx').on(t.termId) }),
+);
+export type Class = typeof classes.$inferSelect;
+
+/** Ordered, free-text subjects for a class (e.g. hifz: Sabaq / Sabqī / Manzil / Tajwīd). */
+export const classSubjects = sqliteTable(
+  'class_subjects',
+  {
+    id: text('id').primaryKey(),
+    classId: text('class_id')
+      .notNull()
+      .references(() => classes.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    position: integer('position').notNull().default(0),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({ classIdx: index('class_subjects_class_idx').on(t.classId) }),
+);
+export type ClassSubject = typeof classSubjects.$inferSelect;
+
+/** Teacher assignment: a class can have several teachers; a teacher several classes.
+ *  References a user with role `teacher` (or admin). This is what scopes a teacher to
+ *  "their" classes/students (§5) once teacher reads land. */
+export const classTeachers = sqliteTable(
+  'class_teachers',
+  {
+    classId: text('class_id')
+      .notNull()
+      .references(() => classes.id, { onDelete: 'cascade' }),
+    userId: text('user_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({ pk: primaryKey({ columns: [t.classId, t.userId] }), userIdx: index('class_teachers_user_idx').on(t.userId) }),
+);
+export type ClassTeacher = typeof classTeachers.$inferSelect;
+
+/** Student ↔ class enrollment (per term, via the class's term). One row per pair. */
+export const enrollments = sqliteTable(
+  'enrollments',
+  {
+    id: text('id').primaryKey(),
+    classId: text('class_id')
+      .notNull()
+      .references(() => classes.id, { onDelete: 'restrict' }),
+    studentId: text('student_id')
+      .notNull()
+      .references(() => students.id, { onDelete: 'restrict' }),
+    status: text('status').$type<'active' | 'withdrawn'>().notNull().default('active'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({
+    uq: unique('enrollments_uq').on(t.classId, t.studentId),
+    classIdx: index('enrollments_class_idx').on(t.classId),
+    studentIdx: index('enrollments_student_idx').on(t.studentId),
+  }),
+);
+export type Enrollment = typeof enrollments.$inferSelect;
