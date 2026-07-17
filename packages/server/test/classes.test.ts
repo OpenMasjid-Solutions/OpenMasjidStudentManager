@@ -85,6 +85,14 @@ describe('terms + classes', () => {
     expect(detail.teachers[0].userId).toBe(teacherId);
   });
 
+  it('rejects duplicate subject names (they would collide on report cards)', async () => {
+    const admin = caller('admin');
+    const term = await admin.classes.termCreate({ name: 'T1' });
+    const cls = await admin.classes.classCreate({ termId: term.id, name: 'C', type: 'hifz' });
+    await expect(admin.classes.setSubjects({ classId: cls.id, subjects: ['Tajwīd', 'tajwīd'] })).rejects.toMatchObject({ code: 'BAD_REQUEST' });
+    await admin.classes.setSubjects({ classId: cls.id, subjects: ['Sabaq', 'Manzil'] }); // distinct is fine
+  });
+
   it('rejects assigning a finance user as a teacher', async () => {
     const admin = caller('admin');
     const term = await admin.classes.termCreate({ name: 'T1' });

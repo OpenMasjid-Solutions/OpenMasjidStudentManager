@@ -15,6 +15,7 @@ export default defineConfig({
       '/api': { target: 'http://localhost:8080', changeOrigin: true },
       '/fabric': { target: 'http://localhost:8080', changeOrigin: true },
       '/apply': { target: 'http://localhost:8080', changeOrigin: true },
+      '/reports': { target: 'http://localhost:8080', changeOrigin: true },
     },
   },
   build: {

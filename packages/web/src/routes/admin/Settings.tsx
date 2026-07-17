@@ -18,6 +18,22 @@ export function Settings() {
   const archive = trpc.records.fieldDefArchive.useMutation();
   const [f, setF] = useState<{ label: string; type: FieldType; options: string }>({ label: '', type: 'text', options: '' });
 
+  // App settings (school name, currency, report-card merit toggle)
+  const appSettings = trpc.settings.get.useQuery();
+  const saveSettings = trpc.settings.set.useMutation();
+  const [school, setSchool] = useState<{ schoolName: string; currency: string } | null>(null);
+  const eff = school ?? (appSettings.data ? { schoolName: appSettings.data.schoolName, currency: appSettings.data.currency } : { schoolName: '', currency: 'usd' });
+
+  async function saveSchool() {
+    await saveSettings.mutateAsync({ schoolName: eff.schoolName.trim(), currency: eff.currency as 'usd' | 'cad' | 'gbp' | 'eur' });
+    await utils.settings.get.invalidate();
+    setSchool(null);
+  }
+  async function toggleMerit() {
+    await saveSettings.mutateAsync({ meritOnReportCard: !appSettings.data?.meritOnReportCard });
+    await utils.settings.get.invalidate();
+  }
+
   // Merit categories
   const meritCats = trpc.merit.categoryList.useQuery();
   const meritCreate = trpc.merit.categoryCreate.useMutation();
@@ -65,6 +81,32 @@ export function Settings() {
       <div className="admin-header">
         <h1 className="page-title" style={{ fontSize: '1.5rem' }}>{t('settings.title')}</h1>
       </div>
+
+      {/* School */}
+      <section className="section glass" style={{ padding: '1rem 1.1rem' }}>
+        <div className="section-head"><h2>{t('settings.school')}</h2></div>
+        <p className="muted" style={{ fontSize: '0.88rem', marginBlockEnd: '0.75rem' }}>{t('settings.schoolHint')}</p>
+        {!appSettings.data ? (
+          <p className="muted" style={{ fontSize: '0.9rem' }}>{t('common.loading')}</p>
+        ) : (
+          <>
+            <div className="inline-form glass-inset" style={{ marginBlockStart: 0 }}>
+              <div className="field" style={{ flex: '2 1 16rem' }}><label className="label">{t('settings.schoolName')}</label><input className="input glass-inset" value={eff.schoolName} onChange={(e) => setSchool({ ...eff, schoolName: e.target.value })} /></div>
+              <div className="field" style={{ flex: '0 1 8rem' }}><label className="label">{t('settings.currency')}</label>
+                <select className="input glass-inset" value={eff.currency} onChange={(e) => setSchool({ ...eff, currency: e.target.value })}>
+                  {['usd', 'cad', 'gbp', 'eur'].map((c) => <option key={c} value={c}>{c.toUpperCase()}</option>)}
+                </select>
+              </div>
+              <button type="button" className="btn btn--primary" onClick={saveSchool} disabled={saveSettings.isPending || !eff.schoolName.trim()}>{t('common.save')}</button>
+            </div>
+            <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginBlockStart: '0.75rem', cursor: 'pointer' }}>
+              <input type="checkbox" checked={!!appSettings.data.meritOnReportCard} onChange={toggleMerit} />
+              <span>{t('settings.meritOnReportCard')}</span>
+            </label>
+          </>
+        )}
+      </section>
+
       <section className="section glass" style={{ padding: '1rem 1.1rem' }}>
         <div className="section-head"><h2>{t('settings.customFields')}</h2></div>
         <p className="muted" style={{ fontSize: '0.88rem', marginBlockEnd: '0.75rem' }}>{t('settings.customFieldsHint')}</p>

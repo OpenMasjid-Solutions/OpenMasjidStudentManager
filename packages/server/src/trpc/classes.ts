@@ -100,8 +100,22 @@ export const classesRouter = router({
       return { ok: true as const };
     }),
 
-  /** Replace a class's ordered subject list. */
-  setSubjects: adminProcedure.input(z.object({ classId: ID, subjects: z.array(z.string().trim().min(1).max(120)).max(50) })).mutation(({ ctx, input }) => {
+  /** Replace a class's ordered subject list. Names must be distinct (case/diacritic-insensitive):
+   *  report cards align a subject across a term's exams BY NAME, so duplicates would collide. */
+  setSubjects: adminProcedure
+    .input(
+      z.object({
+        classId: ID,
+        subjects: z
+          .array(z.string().trim().min(1).max(120))
+          .max(50)
+          .refine((a) => {
+            const norm = a.map((s) => s.normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase());
+            return new Set(norm).size === norm.length;
+          }, { message: 'Each subject must have a distinct name.' }),
+      }),
+    )
+    .mutation(({ ctx, input }) => {
     if (!db.select({ id: classes.id }).from(classes).where(eq(classes.id, input.classId)).get()) throw new TRPCError({ code: 'NOT_FOUND', message: 'Class not found.' });
     const ts = now();
     db.transaction((tx) => {

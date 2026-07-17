@@ -688,3 +688,41 @@ export const termRemarks = sqliteTable(
   (t) => ({ uq: unique('term_remarks_uq').on(t.classId, t.studentId), classIdx: index('term_remarks_class_idx').on(t.classId) }),
 );
 export type TermRemark = typeof termRemarks.$inferSelect;
+
+/** An immutable, versioned report-card PDF for a student in a class+term (§4/§9). A row is
+ *  never edited or deleted — regenerating after a fix inserts version N+1; publishing flips
+ *  `publishedAt` only. The PDF lives under /data/reports with a randomized filename; it is
+ *  served ONLY through the authed route that re-checks the role matrix (§14). */
+export const reportCards = sqliteTable(
+  'report_cards',
+  {
+    id: text('id').primaryKey(),
+    studentId: text('student_id')
+      .notNull()
+      .references(() => students.id, { onDelete: 'restrict' }),
+    classId: text('class_id')
+      .notNull()
+      .references(() => classes.id, { onDelete: 'restrict' }),
+    termId: text('term_id')
+      .notNull()
+      .references(() => terms.id, { onDelete: 'restrict' }),
+    version: integer('version').notNull(),
+    pdfPath: text('pdf_path').notNull(), // filename under /data/reports (never a guessable URL)
+    /** A frozen snapshot of the rendered data (ReportCardData) — so the combined class PDF
+     *  reproduces the filed versions exactly instead of re-aggregating live data. */
+    dataJson: text('data_json', { mode: 'json' }).$type<Record<string, unknown>>(),
+    generatedByUserId: text('generated_by_user_id'),
+    generatedByName: text('generated_by_name'),
+    generatedAt: integer('generated_at', { mode: 'timestamp_ms' }).notNull(),
+    publishedAt: integer('published_at', { mode: 'timestamp_ms' }),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({
+    scIdx: index('report_cards_student_class_idx').on(t.studentId, t.classId),
+    classIdx: index('report_cards_class_idx').on(t.classId),
+    // Immutable N+1 versioning: the DB rejects a duplicate version even under a concurrent race.
+    versionUq: unique('report_cards_version_uq').on(t.studentId, t.classId, t.version),
+  }),
+);
+export type ReportCard = typeof reportCards.$inferSelect;

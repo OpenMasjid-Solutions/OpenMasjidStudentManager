@@ -160,6 +160,24 @@
     "retry": "Try again",
     "confirmDelete": "Delete “{{title}}” and all its scores? This can’t be undone."
   },
+  "reports": {
+    "title": "Report cards",
+    "generateAll": "Generate all",
+    "generating": "Generating…",
+    "generate": "Generate",
+    "regenerate": "Regenerate",
+    "publishAll": "Publish to parents",
+    "unpublishAll": "Unpublish",
+    "downloadAll": "Download all (PDF)",
+    "download": "Download",
+    "student": "Student",
+    "version": "Version",
+    "generated": "Generated",
+    "status": "Status",
+    "published": "Published",
+    "unpublished": "Draft",
+    "hint": "Generating a card after fixing marks creates a new version — old versions are kept. Publish makes the latest visible to parents (portal coming soon)."
+  },
   "exams": {
     "title": "Exams",
     "exams": "Exams",
@@ -266,6 +284,11 @@
   },
   "settings": {
     "title": "Settings",
+    "school": "School",
+    "schoolHint": "Shown on report cards and statements.",
+    "schoolName": "School name",
+    "currency": "Currency",
+    "meritOnReportCard": "Show merit points on report cards",
     "customFields": "Custom student fields",
     "customFieldsHint": "Define fields once — they apply to every student’s record (e.g. previous madrasa, juz at intake, walī name).",
     "noFields": "No custom fields yet.",

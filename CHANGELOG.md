@@ -9,6 +9,34 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.11.0]
+
+### Added
+- **Report cards** (§4/§9/§14) — the artifact families keep. The admin generates a dignified
+  **PDF report card** per student (or the whole class), rendered server-side with @react-pdf
+  (Pi-friendly, no headless browser) using a bundled Amiri font so Arabic names/subjects shape
+  correctly. Each card carries the school name, term, class + type, a **per-subject marks matrix
+  across the term's exams**, totals + percentage + the class's **scale band**, an attendance
+  summary, an optional **merit total** (admin toggle), and the teacher's remark. Cards are
+  **immutable, versioned artifacts** filed on the record — regenerating after a fix creates
+  version N+1; a **combined class PDF** (a page per student) prints the filed versions.
+  A **publish** flag (per class) is set now for the parent portal that follows. PDFs are served
+  ONLY through an **authed route** that re-checks the role × origin matrix on every fetch (admin
+  LAN-only, the assigned teacher for their class; finance never; parents with the portal) — never
+  a guessable URL, never a public mount. New admin **School** settings (name, currency, merit
+  toggle). 7 new tests (103 total).
+
+### Fixed (from an adversarial review of the slice)
+- **Concurrent regeneration can no longer collide on a version** — the next version is reserved
+  in a synchronous transaction, backed by a UNIQUE(student, class, version) constraint.
+- The **combined class PDF now reproduces the filed versions exactly** (a frozen data snapshot on
+  each card) instead of re-aggregating live data, and skips students with no generated card.
+- The **scale band is computed from the exact ratio**, so a score just under a cutoff isn't
+  promoted a band by display rounding.
+- Duplicate subject names in a class are rejected (they would collide on the report card);
+  generating for a non-enrolled student returns a friendly error; the School settings form no
+  longer risks saving stale defaults before it loads.
+
 ## [0.10.0]
 
 ### Added

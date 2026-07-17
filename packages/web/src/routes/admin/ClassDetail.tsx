@@ -8,6 +8,7 @@ import { ClassScheduleEditor } from './ClassScheduleEditor';
 import { AttendancePanel } from '../../components/AttendancePanel';
 import { GradebookPanel } from '../../components/GradebookPanel';
 import { ExamsPanel } from '../../components/ExamsPanel';
+import { ReportCardsPanel } from '../../components/ReportCardsPanel';
 import { MeritPanel } from '../../components/MeritPanel';
 
 export function ClassDetail({ classId }: { classId: string }) {
@@ -85,6 +86,9 @@ export function ClassDetail({ classId }: { classId: string }) {
 
       {/* Exam score entry */}
       <ExamsPanel classId={classId} />
+
+      {/* Report cards */}
+      <ReportCardsPanel classId={classId} canGenerate />
 
       {/* Merit points */}
       <MeritPanel classId={classId} />
