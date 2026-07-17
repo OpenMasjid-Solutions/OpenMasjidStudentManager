@@ -9,6 +9,14 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.5.1]
+
+### Fixed
+- Top-bar chrome now matches the sibling **apps** (Kiosk / Donations / Display), not the
+  OpenMasjidOS platform dashboard: a plain `.topclock` (time over a muted date, no glass
+  box) and a subtle cyan-ring profile button, replacing the OS's boxed `.clock-widget` +
+  filled avatar (§15 — copy the apps, not the platform). Added on-scene text legibility.
+
 ## [0.5.0]
 
 ### Changed

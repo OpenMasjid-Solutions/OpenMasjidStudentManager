@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 OpenMasjid-Solutions
-// Ported verbatim from OpenMasjidOS packages/ui/src/components/Clock.tsx @ c4d309f (v0.40.0) — keep structurally identical for re-sync (CLAUDE.md §15). See packages/web/PORTED_FROM_OPENMASJIDOS.md
 /**
- * A small glass clock for the dashboard's top bar. Honors the user's 12/24-hour
- * and time-zone preferences (Settings → Customize). Display-only — never used
- * for prayer times (that's an app concern, CLAUDE.md §13).
+ * Top-bar clock. Matches the sibling APPS' chrome (OpenMasjidKiosk/Donations/Display:
+ * a plain `.topclock` — time over a muted date, NO glass box) rather than the OS
+ * dashboard's boxed `.clock-widget` (§15 — copy the apps, not the platform). Keeps our
+ * prefs (12/24h + time zone) + the quiet tap-to-ambient extra.
  */
 import { useEffect, useRef, useState } from 'react';
 import { usePrefs } from '../lib/prefs';
@@ -20,7 +20,6 @@ function format(now: Date, clock24h: boolean, tz: string): { time: string; date:
       date: new Intl.DateTimeFormat(undefined, { ...dateOpts, timeZone: zone }).format(now),
     };
   } catch {
-    // Invalid/unknown time zone → fall back to the device's local zone.
     return {
       time: new Intl.DateTimeFormat(undefined, timeOpts).format(now),
       date: new Intl.DateTimeFormat(undefined, dateOpts).format(now),
@@ -31,7 +30,6 @@ function format(now: Date, clock24h: boolean, tz: string): { time: string; date:
 export function Clock() {
   const prefs = usePrefs();
   const [now, setNow] = useState(() => new Date());
-  // Rapid taps on the clock toggle the optional ambient scene (a quiet extra).
   const taps = useRef<number[]>([]);
 
   useEffect(() => {
@@ -53,9 +51,9 @@ export function Clock() {
   }
 
   return (
-    <div className="clock-widget glass-raised" role="group" aria-label="Clock" onClick={onTap}>
-      <span className="clock-time">{time}</span>
-      <span className="clock-date">{date}</span>
+    <div className="topclock" role="group" aria-label={`${time}, ${date}`} onClick={onTap}>
+      <span className="topclock-time">{time}</span>
+      <span className="topclock-date">{date}</span>
     </div>
   );
 }

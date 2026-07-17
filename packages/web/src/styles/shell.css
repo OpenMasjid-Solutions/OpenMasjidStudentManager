@@ -19,6 +19,49 @@
   padding-block: 0.4rem;
 }
 
+/* ── App-style top-bar chrome — matches Kiosk/Donations/Display, NOT the OS glass
+   clock/profile (§15: copy the apps, not the platform). Loaded after the ported
+   app.css so these override the OS chrome for the shared classes. ── */
+.topclock {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  line-height: 1.12;
+}
+.topclock-time {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+.topclock-date {
+  font-size: 0.72rem;
+  color: var(--color-ink-muted);
+}
+@media (max-width: 420px) {
+  .topclock-date { display: none; }
+}
+
+/* Subtle cyan-ring profile button on glass (app style), not the OS bright fill. */
+.topbar .profile-btn {
+  width: 2.5rem;
+  height: 2.5rem;
+  color: var(--color-primary);
+  background: var(--glass-bg-inset);
+  box-shadow: inset 0 0 0 1.5px var(--color-primary);
+}
+.topbar .profile-btn:hover {
+  background: var(--color-surface-hover);
+  transform: scale(1.04);
+}
+
+/* On-scene legibility (chrome + page titles sit over the wallpaper, like the apps). */
+.admin-brand,
+.topclock-time,
+.app-main .page-title {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+}
+
 /* A slim status line under the login card. */
 .shell-status {
   display: inline-flex;
