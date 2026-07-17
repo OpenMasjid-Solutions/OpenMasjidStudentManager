@@ -14,7 +14,7 @@ services:
     # Tag for humans + @sha256 digest for integrity (the digest is the real pin — a
     # moved tag can't repoint it). At release, pin both (CLAUDE.md §19):
     #   ghcr.io/openmasjid-solutions/openmasjidstudentmanager:0.1.0@sha256:<digest>
-    image: ghcr.io/openmasjid-solutions/openmasjidstudentmanager:0.6.0
+    image: ghcr.io/openmasjid-solutions/openmasjidstudentmanager:0.6.0@sha256:8008f0d964cb6658505274aefe8744242de4daa3207ee1db4a1892b520bed03c
     restart: unless-stopped
     environment:
       PORT: "8080"
