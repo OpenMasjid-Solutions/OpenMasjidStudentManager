@@ -4,6 +4,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { trpc } from '../../lib/trpc';
+import { ClassScheduleEditor } from './ClassScheduleEditor';
 
 export function ClassDetail({ classId }: { classId: string }) {
   const { t } = useTranslation();
@@ -68,6 +69,9 @@ export function ClassDetail({ classId }: { classId: string }) {
         </div>
         <button type="button" className="btn btn--primary btn--sm" style={{ marginBlockStart: '0.6rem' }} onClick={saveSubjects} disabled={setSubjects.isPending}>{t('common.save')}</button>
       </section>
+
+      {/* Weekly schedule */}
+      <ClassScheduleEditor classId={classId} />
 
       {/* Teachers */}
       <section className="section glass" style={{ padding: '1rem 1.1rem' }}>

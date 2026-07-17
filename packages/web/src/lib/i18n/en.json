@@ -40,7 +40,8 @@
     "save": "Save",
     "back": "Back",
     "loading": "Loading…",
-    "close": "Close"
+    "close": "Close",
+    "delete": "Delete"
   },
   "directory": {
     "title": "Directory",
@@ -79,9 +80,54 @@
     "dashboard": "Dashboard",
     "directory": "Directory",
     "classes": "Classes",
+    "timetable": "Timetable",
     "staff": "Staff",
     "settings": "Settings",
+    "myWeek": "My week",
+    "myClasses": "My classes",
     "primary": "Primary navigation"
+  },
+  "days": {
+    "0": "Sunday",
+    "1": "Monday",
+    "2": "Tuesday",
+    "3": "Wednesday",
+    "4": "Thursday",
+    "5": "Friday",
+    "6": "Saturday"
+  },
+  "schedule": {
+    "title": "Weekly schedule",
+    "noSessions": "No sessions yet.",
+    "empty": "Nothing scheduled.",
+    "day": "Day",
+    "start": "Start",
+    "end": "End",
+    "room": "Room",
+    "roomHint": "e.g. Main Hall",
+    "addSession": "Add session",
+    "manualHint": "Add each weekly session — you’ll be warned (never blocked) if a teacher or room is double-booked.",
+    "addedWithWarnings": "Session added — please note:",
+    "warnTeacher": "{{teacher}} is also teaching {{class}} at this time.",
+    "warnRoom": "{{room}} is also booked for {{class}} at this time.",
+    "print": "Print",
+    "viewBy": "View by",
+    "by_class": "Class",
+    "by_teacher": "Teacher",
+    "by_student": "Student",
+    "pick_class": "Class",
+    "pick_teacher": "Teacher",
+    "pick_student": "Student",
+    "choose_class": "Choose a class…",
+    "choose_teacher": "Choose a teacher…",
+    "choose_student": "Choose a student…",
+    "pickToView": "Pick one to see its week."
+  },
+  "teach": {
+    "weekIntro": "Here’s your teaching week. Open a class to see its roster and subjects.",
+    "noSessions": "You have no scheduled sessions yet. The office sets the timetable.",
+    "noClasses": "You’re not assigned to any classes yet.",
+    "classDenied": "This class isn’t assigned to you."
   },
   "profile": {
     "menu": "Account",

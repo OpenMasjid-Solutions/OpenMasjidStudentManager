@@ -345,6 +345,28 @@ export const classTeachers = sqliteTable(
 );
 export type ClassTeacher = typeof classTeachers.$inferSelect;
 
+/** A weekly, recurring timetable session for a class (§4). `dayOfWeek` is 0=Sunday…6=Saturday;
+ *  `startMin`/`endMin` are minutes from midnight (0–1439) so overlaps are plain integer math and
+ *  the grid is locale-agnostic (formatting happens in the UI). `room` is a free-text label.
+ *  Manual only in v1 — no auto-scheduler; double-bookings warn (soft), never block. */
+export const classSessions = sqliteTable(
+  'class_sessions',
+  {
+    id: text('id').primaryKey(),
+    classId: text('class_id')
+      .notNull()
+      .references(() => classes.id, { onDelete: 'cascade' }),
+    dayOfWeek: integer('day_of_week').notNull(), // 0=Sun … 6=Sat
+    startMin: integer('start_min').notNull(), // minutes from midnight
+    endMin: integer('end_min').notNull(),
+    room: text('room'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({ classIdx: index('class_sessions_class_idx').on(t.classId), dayIdx: index('class_sessions_day_idx').on(t.dayOfWeek) }),
+);
+export type ClassSession = typeof classSessions.$inferSelect;
+
 /** Student ↔ class enrollment (per term, via the class's term). One row per pair. */
 export const enrollments = sqliteTable(
   'enrollments',

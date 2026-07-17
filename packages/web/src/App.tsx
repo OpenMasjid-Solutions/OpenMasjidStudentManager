@@ -17,6 +17,7 @@ import { Login } from './routes/Login';
 import { Home } from './routes/Home';
 import { ChangePassword } from './routes/ChangePassword';
 import { AdminApp } from './routes/admin/AdminApp';
+import { TeachApp } from './routes/teach/TeachApp';
 import { trpc } from './lib/trpc';
 
 function SetupOnLanNotice() {
@@ -51,10 +52,11 @@ export function App() {
     );
   }
 
-  // The admin dashboard is a full-screen app (its own topbar); everything else uses the
-  // centered auth-wrap. Other roles get a placeholder until their dashboards land.
-  if (!session.isLoading && !session.isError && s?.authenticated && s.user?.role === 'admin') {
-    return <AdminApp />; // AppShell renders its own SceneBackground + dock + windows
+  // Admin + teacher run as full-screen desktop apps (their own topbar + dock + windows);
+  // finance and parent get the placeholder until their dashboards land (CLAUDE.md §20).
+  if (!session.isLoading && !session.isError && s?.authenticated) {
+    if (s.user?.role === 'admin') return <AdminApp />;
+    if (s.user?.role === 'teacher') return <TeachApp />;
   }
 
   let screen: React.ReactNode;

@@ -4,34 +4,49 @@
  * The floating bottom dock — primary nav + open/minimized windows (the family shell,
  * matching OpenMasjidOS/Kiosk/Display). Adapted from OpenMasjidOS packages/ui/Dock:
  * our nav is a small fixed set of sections (state-driven, no router / no app-pinning),
- * and open windows restore from the dock. Uses the ported .dock/.dock-item styles (§15).
+ * given as `items` so each role's shell (admin / teacher / …) supplies its own set.
+ * Open windows restore from the dock. Uses the ported .dock/.dock-item styles (§15).
  */
 import { type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LayoutGrid, Users, GraduationCap, UserCog, Settings as SettingsIcon, AppWindow } from 'lucide-react';
+import { LayoutGrid, Users, GraduationCap, CalendarDays, UserCog, Settings as SettingsIcon, CalendarRange, AppWindow } from 'lucide-react';
 import { cn } from '../lib/cn';
 import { useWindows } from './Windows';
 
-export type Section = 'dashboard' | 'directory' | 'classes' | 'staff' | 'settings';
+/** Admin sections (Dock is generic; this union just types the admin shell's state). */
+export type Section = 'dashboard' | 'directory' | 'classes' | 'timetable' | 'staff' | 'settings';
 
-const ITEMS: { id: Section; icon: ReactNode; key: string }[] = [
-  { id: 'dashboard', icon: <LayoutGrid size={20} />, key: 'nav.dashboard' },
-  { id: 'directory', icon: <Users size={20} />, key: 'nav.directory' },
-  { id: 'classes', icon: <GraduationCap size={20} />, key: 'nav.classes' },
-  { id: 'staff', icon: <UserCog size={20} />, key: 'nav.staff' },
-  { id: 'settings', icon: <SettingsIcon size={20} />, key: 'nav.settings' },
+export interface DockItem {
+  id: string;
+  icon: ReactNode;
+  /** i18n key for the label. */
+  labelKey: string;
+}
+
+export const ADMIN_ITEMS: DockItem[] = [
+  { id: 'dashboard', icon: <LayoutGrid size={20} />, labelKey: 'nav.dashboard' },
+  { id: 'directory', icon: <Users size={20} />, labelKey: 'nav.directory' },
+  { id: 'classes', icon: <GraduationCap size={20} />, labelKey: 'nav.classes' },
+  { id: 'timetable', icon: <CalendarDays size={20} />, labelKey: 'nav.timetable' },
+  { id: 'staff', icon: <UserCog size={20} />, labelKey: 'nav.staff' },
+  { id: 'settings', icon: <SettingsIcon size={20} />, labelKey: 'nav.settings' },
 ];
 
-export function Dock({ active, onNavigate }: { active: Section; onNavigate: (s: Section) => void }) {
+export const TEACH_ITEMS: DockItem[] = [
+  { id: 'week', icon: <CalendarRange size={20} />, labelKey: 'nav.myWeek' },
+  { id: 'classes', icon: <GraduationCap size={20} />, labelKey: 'nav.myClasses' },
+];
+
+export function Dock({ items, active, onNavigate }: { items: DockItem[]; active: string; onNavigate: (id: string) => void }) {
   const { t } = useTranslation();
   const { windows, restore } = useWindows();
 
   return (
     <nav className="dock glass-dock" aria-label={t('nav.primary')}>
-      {ITEMS.map((it) => (
-        <button key={it.id} type="button" className={cn('dock-item', active === it.id && 'is-active')} aria-label={t(it.key)} onClick={() => onNavigate(it.id)}>
+      {items.map((it) => (
+        <button key={it.id} type="button" className={cn('dock-item', active === it.id && 'is-active')} aria-label={t(it.labelKey)} onClick={() => onNavigate(it.id)}>
           {it.icon}
-          <span className="dock-pop"><span className="dock-tip glass-raised">{t(it.key)}</span></span>
+          <span className="dock-pop"><span className="dock-tip glass-raised">{t(it.labelKey)}</span></span>
         </button>
       ))}
 

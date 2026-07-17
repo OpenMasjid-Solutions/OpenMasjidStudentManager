@@ -26,7 +26,7 @@
   gap: 0.6rem;
   font-family: var(--font-display);
   font-weight: 700;
-  color: var(--color-ink);
+  color: var(--text-on-scene);
 }
 .admin-brand .mark {
   color: var(--color-primary);
@@ -256,3 +256,112 @@
   color: var(--color-ink-muted);
   font-size: 0.85rem;
 }
+
+/* ── Weekly timetable (WeekGrid) ─────────────────────────────────────────────
+   Day columns that auto-fit (collapse to one on a phone), each a stack of session
+   cards. Logical properties keep it RTL-correct; the print rules below produce a
+   clean black-on-white handout on a masjid photocopier. */
+.week-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(13rem, 1fr));
+  gap: 0.85rem;
+}
+.week-day {
+  padding: 0.85rem 0.95rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.week-day-name {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}
+.week-day-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.week-session {
+  padding: 0.55rem 0.7rem;
+  border-radius: var(--radius-button);
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.week-session-time {
+  font-size: 0.9rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.week-session-class {
+  font-size: 0.9rem;
+}
+.week-session-type {
+  font-size: 0.72rem;
+  color: var(--color-ink-muted);
+}
+.week-session-room {
+  font-size: 0.78rem;
+  color: var(--color-ink-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+.week-warn {
+  font-size: 0.78rem;
+  color: var(--color-gold);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+/* A soft inline notice (used for non-blocking schedule warnings). */
+.notice {
+  border-radius: var(--radius-button);
+  padding: 0.6rem 0.8rem;
+  font-size: 0.85rem;
+}
+.notice--warn {
+  background: color-mix(in srgb, var(--color-gold) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--color-gold) 35%, transparent);
+}
+
+/* Print: a clean week handout — hide the chrome, drop glass to plain boxes. */
+@media print {
+  .no-print,
+  .topbar,
+  .dock,
+  .scene-bg,
+  .win-frame { display: none !important; }
+  .app-main { padding: 0 !important; }
+  .print-area, .week-grid { break-inside: avoid; }
+  .week-day, .week-session, .glass, .glass-inset {
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
+    border: 1px solid #999 !important;
+    backdrop-filter: none !important;
+  }
+  .week-day-name { color: #000 !important; }
+}
+
+/* ── On-scene vs in-glass text (light-theme legibility) ──────────────────────
+   The wallpaper is dark in BOTH themes, so the shell's default text is light; glass
+   panels re-assert the theme's adaptive ink so their content stays readable in light
+   mode. This keeps dark theme visually identical (its ink is already near-white). */
+.app-shell {
+  color: var(--text-on-scene);
+}
+.app-shell .glass,
+.app-shell .glass-raised,
+.app-shell .glass-inset,
+.app-shell .glass-dock,
+.app-shell .win {
+  color: var(--color-ink);
+}
+/* Page titles + empty states sit directly on the scene. */
+.app-main .page-title { color: var(--text-on-scene); }
+.app-main > .page > .empty,
+.app-main .print-area > .empty { color: var(--text-on-scene-faint); }

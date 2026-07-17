@@ -9,6 +9,30 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.6.0]
+
+### Added
+- **Weekly timetable** (§4): recurring class sessions (day + start/end + room), edited per class
+  from the class window. **Soft double-booking warnings** — a shared teacher or a shared room at
+  an overlapping time (same term + weekday) — that surface inline but **never block** (a madrasa
+  reality is one ustādh covering two rooms). A new **Timetable** section views the week **by class,
+  by teacher, or by student**, with a print-clean handout (black-on-white for a masjid photocopier).
+- **Teacher app** (§5/§15): teachers now sign in to their own desktop shell (same dock + windows
+  as admin) with **My week** (their scheduled sessions) and **My classes** (open a class read-only:
+  schedule, subjects, co-teachers, roster). **Teacher scoping is enforced server-side** — a teacher
+  sees only their assigned classes/students and cannot open another teacher's class (403), tested;
+  teachers never see PINs, notes, incidents or money. Teachers work on the LAN **and** over the
+  Cloudflare tunnel; admin stays LAN-only.
+- 9 new tests (69 total): session CRUD + end-before-start guard, conflict detection (teacher/room,
+  cross-term isolation), by-teacher/by-student views, and the teacher wall (mine/mineGet scoping,
+  `mySchedule` isolation over the tunnel, non-admin/tunnel-admin refusals).
+
+### Fixed
+- **Light-theme legibility on the shell**: the desktop wallpaper is dark in *both* themes, so
+  on-scene chrome (brand, clock, page titles, empty states) now uses a dedicated light on-scene
+  token in both themes instead of the theme's ink — glass panels re-assert adaptive ink so their
+  content stays readable in light mode. (Dark theme is visually unchanged.)
+
 ## [0.5.1]
 
 ### Fixed

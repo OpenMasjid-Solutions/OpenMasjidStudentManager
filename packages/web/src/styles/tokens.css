@@ -180,6 +180,15 @@
      display headings. Both self-hosted via @fontsource (no external CDN). */
   --font-sans: "Inter Variable", Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-display: "Space Grotesk Variable", "Space Grotesk", var(--font-sans);
+
+  /* On-scene text. The desktop wallpaper (data-wallpaper, default "aurora") is DARK in
+     BOTH themes, so chrome that sits directly on it (top-bar brand/clock, page titles,
+     empty states) must stay light in both — otherwise light theme's dark ink vanishes on
+     the dark scene. Glass panels re-assert the theme's adaptive --color-ink (see app.css).
+     (Adapted from the sibling apps' luminance-aware on-scene text — §15.) */
+  --text-on-scene: #EAF3FB;
+  --text-on-scene-muted: #AAB9CE;
+  --text-on-scene-faint: #8695AE;
 }
 
 /* Wallpapers — selectable in Settings (applied via data-wallpaper on <html>).

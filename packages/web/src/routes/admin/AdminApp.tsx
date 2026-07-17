@@ -6,11 +6,12 @@
 import { useState } from 'react';
 import { WindowsProvider } from '../../components/Windows';
 import { AppShell } from '../../components/AppShell';
-import { type Section } from '../../components/Dock';
+import { ADMIN_ITEMS, type Section } from '../../components/Dock';
 import { trpc } from '../../lib/trpc';
 import { Dashboard } from './Dashboard';
 import { Directory } from './Directory';
 import { Classes } from './Classes';
+import { Timetable } from './Timetable';
 import { Staff } from './Staff';
 import { Settings } from './Settings';
 
@@ -21,13 +22,15 @@ export function AdminApp() {
 
   return (
     <WindowsProvider>
-      <AppShell active={section} onNavigate={setSection} onSignedOut={onSignedOut}>
+      <AppShell items={ADMIN_ITEMS} active={section} onNavigate={(s) => setSection(s as Section)} onSignedOut={onSignedOut}>
         {section === 'dashboard' ? (
           <Dashboard onNavigate={setSection} />
         ) : section === 'directory' ? (
           <Directory />
         ) : section === 'classes' ? (
           <Classes />
+        ) : section === 'timetable' ? (
+          <Timetable />
         ) : section === 'staff' ? (
           <Staff />
         ) : (

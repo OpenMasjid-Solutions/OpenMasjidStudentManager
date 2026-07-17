@@ -9,9 +9,9 @@
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
 import { eq, and, asc } from 'drizzle-orm';
-import { router, adminProcedure, auditActor } from './trpc';
+import { router, adminProcedure, teacherProcedure, auditActor } from './trpc';
 import { db } from '../db';
-import { terms, classes, classSubjects, classTeachers, enrollments, students, users } from '../db/schema';
+import { terms, classes, classSubjects, classTeachers, enrollments, students, users, classSessions } from '../db/schema';
 import { rid } from '../db/ids';
 import { audit } from '../audit';
 
@@ -110,6 +110,47 @@ export const classesRouter = router({
     });
     audit(auditActor(ctx), 'class.setSubjects', { entity: 'class', entityId: input.classId, detail: { count: input.subjects.length } });
     return { ok: true as const };
+  }),
+
+  // ── Teacher-scoped reads (§5: a teacher sees ONLY their own classes) ──────────
+  /** Classes the calling teacher is assigned to (optionally within a term). */
+  mine: teacherProcedure.input(z.object({ termId: ID }).optional()).query(({ ctx, input }) => {
+    const uid = ctx.session.userId;
+    if (!uid) return [];
+    return db
+      .select({ id: classes.id, name: classes.name, type: classes.type, customLabel: classes.customLabel, scheduleLabel: classes.scheduleLabel, status: classes.status, termId: classes.termId })
+      .from(classes)
+      .innerJoin(classTeachers, eq(classTeachers.classId, classes.id))
+      .where(and(eq(classTeachers.userId, uid), input?.termId ? eq(classes.termId, input.termId) : undefined))
+      .orderBy(asc(classes.name))
+      .all();
+  }),
+
+  /** Read-only detail of ONE of the teacher's own classes — subjects, co-teachers, the
+   *  active roster and the weekly sessions. 403 if the class isn't assigned to the caller
+   *  (the wall is in the query, not the UI). Teachers never see PINs. */
+  mineGet: teacherProcedure.input(z.object({ id: ID })).query(({ ctx, input }) => {
+    const uid = ctx.session.userId;
+    const assigned = uid && db.select({ classId: classTeachers.classId }).from(classTeachers).where(and(eq(classTeachers.classId, input.id), eq(classTeachers.userId, uid))).get();
+    if (!assigned) throw new TRPCError({ code: 'FORBIDDEN', message: 'You can only open your own classes.' });
+    const cls = db.select().from(classes).where(eq(classes.id, input.id)).get();
+    if (!cls) throw new TRPCError({ code: 'NOT_FOUND', message: 'Class not found.' });
+    const subjects = db.select().from(classSubjects).where(eq(classSubjects.classId, cls.id)).orderBy(asc(classSubjects.position)).all();
+    const teachers = db
+      .select({ userId: classTeachers.userId, username: users.username, displayName: users.displayName })
+      .from(classTeachers)
+      .innerJoin(users, eq(users.id, classTeachers.userId))
+      .where(eq(classTeachers.classId, cls.id))
+      .all();
+    const roster = db
+      .select({ studentId: students.id, firstName: students.firstName, lastName: students.lastName })
+      .from(enrollments)
+      .innerJoin(students, eq(students.id, enrollments.studentId))
+      .where(and(eq(enrollments.classId, cls.id), eq(enrollments.status, 'active')))
+      .orderBy(asc(students.firstName))
+      .all();
+    const sessions = db.select().from(classSessions).where(eq(classSessions.classId, cls.id)).orderBy(asc(classSessions.dayOfWeek), asc(classSessions.startMin)).all();
+    return { class: cls, subjects, teachers, roster, sessions };
   }),
 
   // ── Teacher assignment ─────────────────────────────────────────────────────

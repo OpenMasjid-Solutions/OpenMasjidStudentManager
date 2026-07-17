@@ -10,6 +10,7 @@ import { peopleRouter } from './people';
 import { recordsRouter } from './records';
 import { staffRouter } from './staff';
 import { classesRouter } from './classes';
+import { scheduleRouter } from './schedule';
 import { config, fabricConfigured } from '../config';
 
 export const appRouter = router({
@@ -26,6 +27,7 @@ export const appRouter = router({
   records: recordsRouter,
   staff: staffRouter,
   classes: classesRouter,
+  schedule: scheduleRouter,
 });
 
 export type AppRouter = typeof appRouter;

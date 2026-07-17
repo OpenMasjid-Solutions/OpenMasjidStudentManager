@@ -13,16 +13,18 @@ import { ProfileMenu } from './ProfileMenu';
 import { WindowManager } from './WindowManager';
 import { SceneBackground } from './SceneBackground';
 import { MasjidMark } from './Glyphs';
-import { Dock, type Section } from './Dock';
+import { Dock, type DockItem } from './Dock';
 
 export function AppShell({
+  items,
   active,
   onNavigate,
   onSignedOut,
   children,
 }: {
-  active: Section;
-  onNavigate: (s: Section) => void;
+  items: DockItem[];
+  active: string;
+  onNavigate: (id: string) => void;
   onSignedOut: () => void;
   children: ReactNode;
 }) {
@@ -42,7 +44,7 @@ export function AppShell({
       </div>
       <main className="app-main">{children}</main>
       <WindowManager />
-      <Dock active={active} onNavigate={onNavigate} />
+      <Dock items={items} active={active} onNavigate={onNavigate} />
     </div>
   );
 }
