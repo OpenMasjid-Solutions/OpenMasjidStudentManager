@@ -12,6 +12,7 @@ import { Dashboard } from './Dashboard';
 import { Directory } from './Directory';
 import { Classes } from './Classes';
 import { Timetable } from './Timetable';
+import { Exams } from './Exams';
 import { Staff } from './Staff';
 import { Settings } from './Settings';
 
@@ -31,6 +32,8 @@ export function AdminApp() {
           <Classes />
         ) : section === 'timetable' ? (
           <Timetable />
+        ) : section === 'exams' ? (
+          <Exams />
         ) : section === 'staff' ? (
           <Staff />
         ) : (

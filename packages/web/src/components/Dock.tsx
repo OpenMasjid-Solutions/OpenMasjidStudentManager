@@ -9,12 +9,12 @@
  */
 import { type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LayoutGrid, Users, GraduationCap, CalendarDays, UserCog, Settings as SettingsIcon, CalendarRange, AppWindow } from 'lucide-react';
+import { LayoutGrid, Users, GraduationCap, CalendarDays, ClipboardList, UserCog, Settings as SettingsIcon, CalendarRange, AppWindow } from 'lucide-react';
 import { cn } from '../lib/cn';
 import { useWindows } from './Windows';
 
 /** Admin sections (Dock is generic; this union just types the admin shell's state). */
-export type Section = 'dashboard' | 'directory' | 'classes' | 'timetable' | 'staff' | 'settings';
+export type Section = 'dashboard' | 'directory' | 'classes' | 'timetable' | 'exams' | 'staff' | 'settings';
 
 export interface DockItem {
   id: string;
@@ -28,6 +28,7 @@ export const ADMIN_ITEMS: DockItem[] = [
   { id: 'directory', icon: <Users size={20} />, labelKey: 'nav.directory' },
   { id: 'classes', icon: <GraduationCap size={20} />, labelKey: 'nav.classes' },
   { id: 'timetable', icon: <CalendarDays size={20} />, labelKey: 'nav.timetable' },
+  { id: 'exams', icon: <ClipboardList size={20} />, labelKey: 'nav.exams' },
   { id: 'staff', icon: <UserCog size={20} />, labelKey: 'nav.staff' },
   { id: 'settings', icon: <SettingsIcon size={20} />, labelKey: 'nav.settings' },
 ];

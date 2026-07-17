@@ -14,6 +14,7 @@ import { scheduleRouter } from './schedule';
 import { attendanceRouter } from './attendance';
 import { gradesRouter } from './grades';
 import { meritRouter } from './merit';
+import { examsRouter } from './exams';
 import { config, fabricConfigured } from '../config';
 
 export const appRouter = router({
@@ -34,6 +35,7 @@ export const appRouter = router({
   attendance: attendanceRouter,
   grades: gradesRouter,
   merit: meritRouter,
+  exams: examsRouter,
 });
 
 export type AppRouter = typeof appRouter;

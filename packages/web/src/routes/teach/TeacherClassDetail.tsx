@@ -9,6 +9,7 @@ import { trpc } from '../../lib/trpc';
 import { WeekGrid, type SessionRow } from '../../components/WeekGrid';
 import { AttendancePanel } from '../../components/AttendancePanel';
 import { GradebookPanel } from '../../components/GradebookPanel';
+import { ExamsPanel } from '../../components/ExamsPanel';
 import { MeritPanel } from '../../components/MeritPanel';
 
 export function TeacherClassDetail({ classId }: { classId: string }) {
@@ -43,6 +44,9 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
 
       {/* Gradebook */}
       <GradebookPanel classId={cls.id} />
+
+      {/* Exam score entry */}
+      <ExamsPanel classId={cls.id} />
 
       {/* Merit points */}
       <MeritPanel classId={cls.id} />

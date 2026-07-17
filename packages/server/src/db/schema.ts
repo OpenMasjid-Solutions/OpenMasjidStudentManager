@@ -573,3 +573,118 @@ export const meritAwards = sqliteTable(
   }),
 );
 export type MeritAward = typeof meritAwards.$inferSelect;
+
+// ── Exams & report cards (slice: the term-end machine) ────────────────────────
+
+export type ExamScoreStatus = 'scored' | 'absent' | 'exempt';
+
+/** An exam the admin defines for a term (e.g. "Mid-Term", "Final"), then assigns to classes. */
+export const exams = sqliteTable(
+  'exams',
+  {
+    id: text('id').primaryKey(),
+    termId: text('term_id')
+      .notNull()
+      .references(() => terms.id, { onDelete: 'restrict' }),
+    name: text('name').notNull(),
+    position: integer('position').notNull().default(0),
+    status: text('status').$type<'active' | 'archived'>().notNull().default('active'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({ termIdx: index('exams_term_idx').on(t.termId) }),
+);
+export type Exam = typeof exams.$inferSelect;
+
+/** An exam assigned to a class. Creating this row SNAPSHOTS the class's subjects into
+ *  exam_class_subjects (below) — so later edits to the class never corrupt a past exam (§9). */
+export const examClasses = sqliteTable(
+  'exam_classes',
+  {
+    id: text('id').primaryKey(),
+    examId: text('exam_id')
+      .notNull()
+      .references(() => exams.id, { onDelete: 'cascade' }),
+    classId: text('class_id')
+      .notNull()
+      .references(() => classes.id, { onDelete: 'restrict' }),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({ uq: unique('exam_classes_uq').on(t.examId, t.classId), examIdx: index('exam_classes_exam_idx').on(t.examId), classIdx: index('exam_classes_class_idx').on(t.classId) }),
+);
+export type ExamClass = typeof examClasses.$inferSelect;
+
+/** The frozen subject list for an exam-class: copied from class_subjects at assignment time,
+ *  each with an editable per-subject max mark (default 100). Editing a class's live subjects
+ *  never touches this (§9). */
+export const examClassSubjects = sqliteTable(
+  'exam_class_subjects',
+  {
+    id: text('id').primaryKey(),
+    examClassId: text('exam_class_id')
+      .notNull()
+      .references(() => examClasses.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    maxMarks: integer('max_marks').notNull().default(100),
+    position: integer('position').notNull().default(0),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({ examClassIdx: index('exam_class_subjects_idx').on(t.examClassId) }),
+);
+export type ExamClassSubject = typeof examClassSubjects.$inferSelect;
+
+/** One student's mark for one exam-class subject. `status` is explicit — `scored` (with a
+ *  numeric `value`), `absent`, or `exempt`; NO row means "not yet entered" (a blank, which
+ *  blocks completion — §9). UNIQUE per (exam-class, student, subject). */
+export const examScores = sqliteTable(
+  'exam_scores',
+  {
+    id: text('id').primaryKey(),
+    examClassId: text('exam_class_id')
+      .notNull()
+      .references(() => examClasses.id, { onDelete: 'cascade' }),
+    studentId: text('student_id')
+      .notNull()
+      .references(() => students.id, { onDelete: 'restrict' }),
+    subjectId: text('subject_id')
+      .notNull()
+      .references(() => examClassSubjects.id, { onDelete: 'cascade' }),
+    status: text('status').$type<ExamScoreStatus>().notNull(),
+    value: integer('value'), // set only when status = 'scored'
+    markedByUserId: text('marked_by_user_id'),
+    markedByName: text('marked_by_name'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({
+    uq: unique('exam_scores_uq').on(t.examClassId, t.studentId, t.subjectId),
+    ecIdx: index('exam_scores_ec_idx').on(t.examClassId),
+    studentIdx: index('exam_scores_student_idx').on(t.studentId),
+  }),
+);
+export type ExamScore = typeof examScores.$inferSelect;
+
+/** A teacher's per-student remark for a class's term (entered during exam score entry, shown on
+ *  the report card). One per (class, student). */
+export const termRemarks = sqliteTable(
+  'term_remarks',
+  {
+    id: text('id').primaryKey(),
+    classId: text('class_id')
+      .notNull()
+      .references(() => classes.id, { onDelete: 'restrict' }),
+    termId: text('term_id')
+      .notNull()
+      .references(() => terms.id, { onDelete: 'restrict' }),
+    studentId: text('student_id')
+      .notNull()
+      .references(() => students.id, { onDelete: 'restrict' }),
+    remark: text('remark').notNull(),
+    authorUserId: text('author_user_id'),
+    authorName: text('author_name'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({ uq: unique('term_remarks_uq').on(t.classId, t.studentId), classIdx: index('term_remarks_class_idx').on(t.classId) }),
+);
+export type TermRemark = typeof termRemarks.$inferSelect;

@@ -1,6 +1,6 @@
 {
   "name": "openmasjidstudentmanager",
-  "version": "0.9.0",
+  "version": "0.10.0",
   "private": true,
   "description": "OpenMasjid Students — a self-hosted, madrasa-first school-management app (SIS, gradebook, exams, report cards, transcripts, admissions and tuition billing) that runs as an OpenMasjidOS app.",
   "license": "AGPL-3.0-only",

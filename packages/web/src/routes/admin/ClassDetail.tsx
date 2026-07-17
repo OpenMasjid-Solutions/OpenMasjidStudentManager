@@ -7,6 +7,7 @@ import { trpc } from '../../lib/trpc';
 import { ClassScheduleEditor } from './ClassScheduleEditor';
 import { AttendancePanel } from '../../components/AttendancePanel';
 import { GradebookPanel } from '../../components/GradebookPanel';
+import { ExamsPanel } from '../../components/ExamsPanel';
 import { MeritPanel } from '../../components/MeritPanel';
 
 export function ClassDetail({ classId }: { classId: string }) {
@@ -81,6 +82,9 @@ export function ClassDetail({ classId }: { classId: string }) {
 
       {/* Gradebook (admin also configures the class's grading scale) */}
       <GradebookPanel classId={classId} canConfigScale />
+
+      {/* Exam score entry */}
+      <ExamsPanel classId={classId} />
 
       {/* Merit points */}
       <MeritPanel classId={classId} />

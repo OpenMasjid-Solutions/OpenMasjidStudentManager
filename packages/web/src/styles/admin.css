@@ -505,3 +505,37 @@
   font-size: 0.9rem;
   flex-wrap: wrap;
 }
+
+/* ── Exams (score entry) ─────────────────────────────────────────────────────
+   A completion progress bar + the max-marks and term-remark rows. Reuses the
+   gradebook grid cell styles. RTL-safe via logical properties. */
+.exam-progress {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+.exam-progress-bar {
+  flex: 1;
+  block-size: 0.5rem;
+  border-radius: 999px;
+  background: var(--glass-bg-inset);
+  overflow: hidden;
+}
+.exam-progress-bar span {
+  display: block;
+  block-size: 100%;
+  background: var(--color-primary);
+  border-radius: 999px;
+  transition: inline-size var(--dur-settle) var(--ease-settle);
+}
+.exam-max {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+.exam-remark-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}

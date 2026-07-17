@@ -9,6 +9,27 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.10.0]
+
+### Added
+- **Exams** (§4/§5/§9) — the first half of the term-end machine. The admin defines a term's
+  exams (e.g. Mid-Term, Final) and **assigns each to classes**; assigning **snapshots** the
+  class's subjects into the exam with an editable per-subject **max mark** (default 100), so
+  later edits to the class's subjects never corrupt a past exam. Teachers (and admin) fill a
+  students × subjects **score grid** — a mark, or an explicit **absent** / **exempt** (a blank
+  means "not entered", which blocks completion) — plus an optional per-student **term remark**,
+  with a live **progress bar**. The admin gets a **completion dashboard** (scored-vs-enrolled
+  per class). Definitions/assignment are admin-only; score entry is admin or the assigned
+  teacher (scoped via `classAccess`); finance/parent are refused; admin stays LAN-only. Lowering
+  a subject's max below an already-entered mark is rejected; score writes are audited without
+  per-student PII. New **Exams** admin section + an **Exams** panel in every class window.
+  5 new tests (96 total).
+
+### Notes
+- Report-card PDFs, term close/finals, transcripts and the comment bank build on this in the
+  next slices. Reviewed solo this release (the shared session limit was active); the access
+  walls reuse the pattern already hardened by the 0.7.0/0.8.0 adversarial reviews.
+
 ## [0.9.0]
 
 ### Added
