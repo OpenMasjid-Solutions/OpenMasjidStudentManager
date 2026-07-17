@@ -7,6 +7,7 @@
 import { useTranslation } from 'react-i18next';
 import { trpc } from '../../lib/trpc';
 import { WeekGrid, type SessionRow } from '../../components/WeekGrid';
+import { AttendancePanel } from '../../components/AttendancePanel';
 
 export function TeacherClassDetail({ classId }: { classId: string }) {
   const { t } = useTranslation();
@@ -34,6 +35,9 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
         <span className="chip">{cls.type === 'custom' && cls.customLabel ? cls.customLabel : t(`ctype.${cls.type}`)}</span>
         {cls.scheduleLabel && <span className="muted">{cls.scheduleLabel}</span>}
       </div>
+
+      {/* Attendance — the teacher's daily tool */}
+      <AttendancePanel classId={cls.id} />
 
       {/* Schedule */}
       <section className="section glass" style={{ padding: '1rem 1.1rem' }}>

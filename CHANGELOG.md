@@ -9,6 +9,28 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.7.0]
+
+### Added
+- **Attendance** (§4/§5/§9): a teacher (or admin) marks a class's roster for a day —
+  **present / late / absent / excused** with a bulk **All present** — from the class window.
+  One row per (student, class, date), UNIQUE, so a save is an upsert. Only actively-enrolled
+  students can be marked. **Same-day marking is routine; later edits and past-date (backfill)
+  marks are audited** (who last marked is always stored), with **no PII in the audit detail**
+  (counts + date only). Teacher access is scoped to their own classes (the wall is in the
+  `classAccess` guard, not the UI); finance/parent are refused; admin stays LAN-only. A shared
+  `AttendancePanel` (phone-friendly, semantic status colours, RTL-safe) serves both the teacher
+  and admin class windows. 9 new tests (78 total).
+
+### Fixed (from an adversarial review of the slice)
+- **Timezone-safe backfill detection**: the client sends its local day so a routine evening
+  mark isn't mislabelled a backfill across a UTC-container midnight (previously the audit could
+  wrongly log `lateMark`, or miss a genuine backfill).
+- **Duplicate student in one submission** is now rejected at the input boundary with a friendly
+  error instead of surfacing a raw SQLite UNIQUE-constraint error.
+- **AttendancePanel**: the "Saved" confirmation no longer gets wiped by the post-save refetch,
+  and changing the date with unsaved marks now asks before discarding them.
+
 ## [0.6.0]
 
 ### Added

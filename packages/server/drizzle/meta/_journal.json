@@ -43,6 +43,13 @@
       "when": 1784250010459,
       "tag": "0005_aspiring_saracen",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1784251793632,
+      "tag": "0006_odd_mandrill",
+      "breakpoints": true
     }
   ]
 }

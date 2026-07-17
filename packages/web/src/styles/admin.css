@@ -365,3 +365,57 @@
 .app-main .page-title { color: var(--text-on-scene); }
 .app-main > .page > .empty,
 .app-main .print-area > .empty { color: var(--text-on-scene-faint); }
+
+/* ── Attendance panel (shared teacher + admin) ───────────────────────────────
+   A per-student segmented control (present / late / absent / excused). Colour is
+   semantic (success / gold / danger / primary) and independent of the cyan accent.
+   Icon-only on phones (labels hide) to keep rows one-thumb wide; RTL-safe. */
+.att-toolbar {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-block-end: 0.85rem;
+}
+.att-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.att-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.65rem;
+  border-radius: var(--radius-button);
+  flex-wrap: wrap;
+}
+.att-row .name {
+  flex: 1 1 8rem;
+  font-size: 0.92rem;
+}
+.att-seg {
+  display: inline-flex;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+.att-seg-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.76rem;
+  padding: 0.28rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--glass-border);
+  color: var(--color-ink-muted);
+  background: transparent;
+  transition: background var(--dur-micro) ease, color var(--dur-micro) ease, border-color var(--dur-micro) ease;
+}
+.att-seg-btn:hover { border-color: var(--color-primary); }
+.att-seg-btn.is-active.s-present { background: color-mix(in srgb, var(--color-success) 20%, transparent); color: var(--color-success); border-color: color-mix(in srgb, var(--color-success) 55%, transparent); }
+.att-seg-btn.is-active.s-late    { background: color-mix(in srgb, var(--color-gold) 20%, transparent);    color: var(--color-gold);    border-color: color-mix(in srgb, var(--color-gold) 55%, transparent); }
+.att-seg-btn.is-active.s-absent  { background: color-mix(in srgb, var(--color-danger) 20%, transparent);  color: var(--color-danger);  border-color: color-mix(in srgb, var(--color-danger) 55%, transparent); }
+.att-seg-btn.is-active.s-excused { background: color-mix(in srgb, var(--color-primary) 18%, transparent); color: var(--color-primary); border-color: color-mix(in srgb, var(--color-primary) 55%, transparent); }
+@media (max-width: 520px) {
+  .att-seg-label { display: none; }
+}

@@ -129,6 +129,19 @@
     "noClasses": "You’re not assigned to any classes yet.",
     "classDenied": "This class isn’t assigned to you."
   },
+  "attendance": {
+    "title": "Attendance",
+    "date": "Date",
+    "allPresent": "All present",
+    "saved": "Saved",
+    "pastDate": "Editing a past day — this change is recorded.",
+    "discardUnsaved": "You have unsaved attendance for this day. Switch date and discard it?",
+    "markedCount": "{{n}} of {{total}} marked",
+    "present": "Present",
+    "late": "Late",
+    "absent": "Absent",
+    "excused": "Excused"
+  },
   "profile": {
     "menu": "Account",
     "lightMode": "Light mode",

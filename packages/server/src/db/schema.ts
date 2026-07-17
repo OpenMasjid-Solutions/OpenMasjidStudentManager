@@ -389,3 +389,38 @@ export const enrollments = sqliteTable(
   }),
 );
 export type Enrollment = typeof enrollments.$inferSelect;
+
+// ── Attendance (slice: teacher tools) ────────────────────────────────────────
+
+export type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
+
+/** Daily attendance per (student, class, date) — UNIQUE, so marking is an upsert (§9).
+ *  `status` is an explicit state (never a blank). Same-day marking is normal; later edits are
+ *  allowed but AUDITED (§4) — the handler records who last marked and audits edits/backfills.
+ *  `note` is an optional short reason (e.g. for `excused`). FKs RESTRICT: classes/students are
+ *  archived/withdrawn, never hard-deleted, so attendance history is never orphaned. */
+export const attendance = sqliteTable(
+  'attendance',
+  {
+    id: text('id').primaryKey(),
+    classId: text('class_id')
+      .notNull()
+      .references(() => classes.id, { onDelete: 'restrict' }),
+    studentId: text('student_id')
+      .notNull()
+      .references(() => students.id, { onDelete: 'restrict' }),
+    date: text('date').notNull(), // ISO date (YYYY-MM-DD)
+    status: text('status').$type<AttendanceStatus>().notNull(),
+    note: text('note'),
+    markedByUserId: text('marked_by_user_id'),
+    markedByName: text('marked_by_name'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({
+    uq: unique('attendance_uq').on(t.studentId, t.classId, t.date),
+    classDateIdx: index('attendance_class_date_idx').on(t.classId, t.date),
+    studentIdx: index('attendance_student_idx').on(t.studentId),
+  }),
+);
+export type Attendance = typeof attendance.$inferSelect;
