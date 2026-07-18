@@ -9,6 +9,35 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.14.0]
+
+### Added
+- **Billing core** (§4/§5/§9/§16) — the money side, ours end to end. **Fee plans** (amount in
+  integer cents, cadence monthly/per-term/one-time) assignable per enrollment; a per-family
+  **discount** (fixed or percent). **Invoice generation** — per family or per period, idempotent on
+  family+period, one negative line for the discount, skips families with no fees. The **ledger** is
+  the single money-write path (`billing/ledger.ts`): derived balances (never stored), payments are
+  immutable (corrections are reversal rows), allocation is oldest-due-first with surplus → family
+  credit, and every write is idempotent on its key. **Manual payments** (cash/Zelle/check/other)
+  with reverse; **void** an unpaid invoice. Admin + finance only — finance works LAN **and** over
+  the tunnel; admin stays LAN-only (origin policy). New **finance role app** (Billing-only shell), a
+  **Billing** section in admin (fee plans, period generation, families-with-balances overview), and
+  a per-family billing window (balance, fee assignment, invoices, payment entry, ledger, discount).
+  i18n en/ar/ur. 10 new tests (131 total).
+
+### Fixed (from an adversarial review of the money layer)
+- **Oldest-due-first no longer skips dated invoices.** SQLite sorts `NULL` before any value, so an
+  undated invoice would jump ahead of a genuinely-due one and absorb a payment first — leaving the
+  real bill open. Undated invoices now sort **last** in auto-allocation.
+- **Explicit allocations can't overpay a bill.** The Fabric/webhook allocation path now rejects an
+  allocation that exceeds an invoice's remaining balance, one whose total exceeds the payment
+  amount, or one against a voided invoice — no more negative credit or `paid > total`.
+- **Voiding a paid invoice is refused server-side.** Voiding dropped the invoice from the invoiced
+  total while its payment stayed counted, understating the family balance; the server now returns a
+  friendly conflict and asks you to reverse the payment first (the UI already discouraged it).
+- **The family-discount form now shows the current discount** instead of silently defaulting to
+  "None" (which could overwrite a saved discount on an unrelated save).
+
 ## [0.13.0]
 
 ### Added

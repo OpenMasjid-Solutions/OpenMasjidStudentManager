@@ -68,12 +68,16 @@ export type Session = typeof sessions.$inferSelect;
 // ── People & SIS (slice 3) ───────────────────────────────────────────────────
 
 /** A family groups students and links to guardians. Archived, never hard-deleted
- *  (money/records reference it). `name` is the display label (e.g. "Ismail family"). */
+ *  (money/records reference it). `name` is the display label (e.g. "Ismail family").
+ *  An optional per-family discount applies to generated invoices (§4): `none`, a `fixed`
+ *  amount in cents, or a `percent` in basis points (e.g. 1000 = 10%). */
 export const families = sqliteTable('families', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   notes: text('notes'),
   status: text('status').$type<'active' | 'archived'>().notNull().default('active'),
+  discountKind: text('discount_kind').$type<'none' | 'fixed' | 'percent'>().notNull().default('none'),
+  discountValue: integer('discount_value').notNull().default(0), // cents (fixed) or basis points (percent)
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
 });
@@ -709,6 +713,123 @@ export const commentSnippets = sqliteTable(
   (t) => ({ ownerIdx: index('comment_snippets_owner_idx').on(t.ownerUserId), scopeIdx: index('comment_snippets_scope_idx').on(t.scope) }),
 );
 export type CommentSnippet = typeof commentSnippets.$inferSelect;
+
+// ── Billing (slice 9: fee plans, invoices, ledger) ───────────────────────────
+
+export type FeeCadence = 'monthly' | 'per_term' | 'one_time';
+export type InvoiceStatus = 'open' | 'partially_paid' | 'paid' | 'void';
+export type PaymentChannel = 'donations-web' | 'kiosk' | 'portal' | 'autopay' | 'cash' | 'zelle' | 'check' | 'other';
+
+/** A reusable fee plan — an amount (integer cents) + cadence — assigned per enrollment (§4). */
+export const feePlans = sqliteTable('fee_plans', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  amountCents: integer('amount_cents').notNull(),
+  cadence: text('cadence').$type<FeeCadence>().notNull(),
+  status: text('status').$type<'active' | 'archived'>().notNull().default('active'),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+});
+export type FeePlan = typeof feePlans.$inferSelect;
+
+/** A fee plan assigned to one enrollment (student ↔ class). Invoice generation gathers a
+ *  family's active enrollment fees. FK RESTRICT on the money path (§9). */
+export const enrollmentFees = sqliteTable(
+  'enrollment_fees',
+  {
+    id: text('id').primaryKey(),
+    enrollmentId: text('enrollment_id')
+      .notNull()
+      .references(() => enrollments.id, { onDelete: 'restrict' }),
+    feePlanId: text('fee_plan_id')
+      .notNull()
+      .references(() => feePlans.id, { onDelete: 'restrict' }),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({ uq: unique('enrollment_fees_uq').on(t.enrollmentId, t.feePlanId), enrollIdx: index('enrollment_fees_enroll_idx').on(t.enrollmentId) }),
+);
+export type EnrollmentFee = typeof enrollmentFees.$inferSelect;
+
+/** A family invoice for a period. Total = sum of items; balance + status are DERIVED from
+ *  allocations, never stored (§9). `periodKey` (e.g. "2026-07" or a termId) dedupes generation. */
+export const invoices = sqliteTable(
+  'invoices',
+  {
+    id: text('id').primaryKey(),
+    familyId: text('family_id')
+      .notNull()
+      .references(() => families.id, { onDelete: 'restrict' }),
+    label: text('label').notNull(),
+    periodKey: text('period_key').notNull(),
+    dueDate: text('due_date'), // ISO date
+    status: text('status').$type<InvoiceStatus>().notNull().default('open'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({ familyIdx: index('invoices_family_idx').on(t.familyId), periodUq: unique('invoices_family_period_uq').on(t.familyId, t.periodKey) }),
+);
+export type Invoice = typeof invoices.$inferSelect;
+
+/** A line on an invoice (integer cents). A discount is a negative-amount line. */
+export const invoiceItems = sqliteTable(
+  'invoice_items',
+  {
+    id: text('id').primaryKey(),
+    invoiceId: text('invoice_id')
+      .notNull()
+      .references(() => invoices.id, { onDelete: 'cascade' }),
+    description: text('description').notNull(),
+    amountCents: integer('amount_cents').notNull(),
+    studentId: text('student_id').references(() => students.id, { onDelete: 'restrict' }),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({ invoiceIdx: index('invoice_items_invoice_idx').on(t.invoiceId) }),
+);
+export type InvoiceItem = typeof invoiceItems.$inferSelect;
+
+/** A payment against a family's balance — IMMUTABLE (corrections are reversal rows with a
+ *  negative amount and `reversalOf` set). `idempotencyKey` is UNIQUE per install so a replay
+ *  (any channel — cash, portal, autopay, donations, kiosk) returns the original (§9). */
+export const payments = sqliteTable(
+  'payments',
+  {
+    id: text('id').primaryKey(),
+    familyId: text('family_id')
+      .notNull()
+      .references(() => families.id, { onDelete: 'restrict' }),
+    amountCents: integer('amount_cents').notNull(), // negative for a reversal
+    channel: text('channel').$type<PaymentChannel>().notNull(),
+    occurredAt: integer('occurred_at', { mode: 'timestamp_ms' }).notNull(),
+    memo: text('memo'),
+    idempotencyKey: text('idempotency_key').notNull(),
+    externalRef: text('external_ref', { mode: 'json' }).$type<Record<string, unknown>>(), // Stripe ids etc. (later)
+    reversalOf: text('reversal_of'), // the payment id this reverses
+    recordedByUserId: text('recorded_by_user_id'),
+    recordedByName: text('recorded_by_name'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({ familyIdx: index('payments_family_idx').on(t.familyId), idemUq: unique('payments_idempotency_uq').on(t.idempotencyKey) }),
+);
+export type Payment = typeof payments.$inferSelect;
+
+/** How much of a payment covered which invoice (oldest-due-first by the ledger). A reversal
+ *  writes negative allocations mirroring the original, so per-invoice paid nets out. */
+export const paymentAllocations = sqliteTable(
+  'payment_allocations',
+  {
+    id: text('id').primaryKey(),
+    paymentId: text('payment_id')
+      .notNull()
+      .references(() => payments.id, { onDelete: 'restrict' }),
+    invoiceId: text('invoice_id')
+      .notNull()
+      .references(() => invoices.id, { onDelete: 'restrict' }),
+    amountCents: integer('amount_cents').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({ paymentIdx: index('payment_allocations_payment_idx').on(t.paymentId), invoiceIdx: index('payment_allocations_invoice_idx').on(t.invoiceId) }),
+);
+export type PaymentAllocation = typeof paymentAllocations.$inferSelect;
 
 /** An immutable, versioned report-card PDF for a student in a class+term (§4/§9). A row is
  *  never edited or deleted — regenerating after a fix inserts version N+1; publishing flips

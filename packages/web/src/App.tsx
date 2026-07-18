@@ -18,6 +18,7 @@ import { Home } from './routes/Home';
 import { ChangePassword } from './routes/ChangePassword';
 import { AdminApp } from './routes/admin/AdminApp';
 import { TeachApp } from './routes/teach/TeachApp';
+import { FinanceApp } from './routes/finance/FinanceApp';
 import { trpc } from './lib/trpc';
 
 function SetupOnLanNotice() {
@@ -57,6 +58,7 @@ export function App() {
   if (!session.isLoading && !session.isError && s?.authenticated) {
     if (s.user?.role === 'admin') return <AdminApp />;
     if (s.user?.role === 'teacher') return <TeachApp />;
+    if (s.user?.role === 'finance') return <FinanceApp />;
   }
 
   let screen: React.ReactNode;
