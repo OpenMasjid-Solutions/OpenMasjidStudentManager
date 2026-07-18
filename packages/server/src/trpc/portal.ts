@@ -7,13 +7,16 @@
  * open invoices, and the unified payment history. Grades / schedule / merit / attendance / report
  * cards land in later slices. Every value crosses through parentProcedure (LAN + tunnel).
  */
-import { and, eq, desc, inArray } from 'drizzle-orm';
+import { z } from 'zod';
+import { and, eq, asc, desc, inArray } from 'drizzle-orm';
 import { router, parentProcedure } from './trpc';
 import { db } from '../db';
-import { families, students, invoices, payments, reportCards, transcripts, classes } from '../db/schema';
+import { families, students, invoices, payments, reportCards, transcripts, classes, enrollments, gradeItems, grades, attendance, meritAwards, meritCategories } from '../db/schema';
 import { familyBalance, invoiceTotal, invoicePaid } from '../billing/ledger';
 import { getCurrency } from '../settings';
-import { parentFamilyIds, parentStudentIds } from './familyAccess';
+import { parentFamilyIds, parentStudentIds, assertStudentAccess } from './familyAccess';
+
+const STUDENT = z.object({ studentId: z.string().min(1).max(64) });
 
 export const portalRouter = router({
   /** Everything the My-Family home needs, for each family this parent is linked to. */
@@ -93,6 +96,56 @@ export const portalRouter = router({
       return { studentId: k.id, name: `${k.firstName} ${k.lastName}`.trim(), reportCards: reportCardList, transcripts: transcriptList };
     });
     return { children };
+  }),
+
+  /** One of the parent's kids: gradebook items + the kid's score, grouped by class. Read-only. */
+  childGrades: parentProcedure.input(STUDENT).query(({ ctx, input }) => {
+    assertStudentAccess(ctx, input.studentId);
+    const enrs = db
+      .select({ classId: enrollments.classId, className: classes.name })
+      .from(enrollments)
+      .innerJoin(classes, eq(classes.id, enrollments.classId))
+      .where(and(eq(enrollments.studentId, input.studentId), eq(enrollments.status, 'active')))
+      .orderBy(asc(classes.name))
+      .all();
+    // The kid's scores (points are stored ×100 to avoid float drift).
+    const scoreOf = new Map(db.select({ gradeItemId: grades.gradeItemId, points: grades.points }).from(grades).where(eq(grades.studentId, input.studentId)).all().map((g) => [g.gradeItemId, g.points]));
+    const classesOut = enrs.map((e) => {
+      const items = db
+        .select({ id: gradeItems.id, title: gradeItems.title, date: gradeItems.date, maxPoints: gradeItems.maxPoints, category: gradeItems.category })
+        .from(gradeItems)
+        .where(eq(gradeItems.classId, e.classId))
+        .orderBy(asc(gradeItems.createdAt))
+        .all();
+      return {
+        classId: e.classId,
+        className: e.className,
+        items: items.map((it) => ({ title: it.title, date: it.date, maxPoints: it.maxPoints, category: it.category, points: scoreOf.has(it.id) ? scoreOf.get(it.id)! / 100 : null })),
+      };
+    });
+    return { classes: classesOut };
+  }),
+
+  /** One of the parent's kids: attendance tallies + recent records. Read-only. */
+  childAttendance: parentProcedure.input(STUDENT).query(({ ctx, input }) => {
+    assertStudentAccess(ctx, input.studentId);
+    const rows = db.select({ date: attendance.date, status: attendance.status, classId: attendance.classId }).from(attendance).where(eq(attendance.studentId, input.studentId)).orderBy(desc(attendance.date)).all();
+    const counts = { present: 0, absent: 0, late: 0, excused: 0 } as Record<'present' | 'absent' | 'late' | 'excused', number>;
+    for (const r of rows) counts[r.status] = (counts[r.status] ?? 0) + 1;
+    const classIds = [...new Set(rows.map((r) => r.classId))];
+    const classNames = classIds.length ? new Map(db.select({ id: classes.id, name: classes.name }).from(classes).where(inArray(classes.id, classIds)).all().map((c) => [c.id, c.name])) : new Map<string, string>();
+    const recent = rows.slice(0, 20).map((r) => ({ date: r.date, status: r.status, className: classNames.get(r.classId) ?? '—' }));
+    return { counts, total: rows.length, recent };
+  }),
+
+  /** One of the parent's kids: merit total + award history. Read-only. */
+  childMerit: parentProcedure.input(STUDENT).query(({ ctx, input }) => {
+    assertStudentAccess(ctx, input.studentId);
+    const awards = db.select({ points: meritAwards.points, categoryId: meritAwards.categoryId, note: meritAwards.note, at: meritAwards.createdAt }).from(meritAwards).where(eq(meritAwards.studentId, input.studentId)).orderBy(desc(meritAwards.createdAt)).all();
+    const total = awards.reduce((s, a) => s + a.points, 0);
+    const catNames = new Map(db.select({ id: meritCategories.id, name: meritCategories.name }).from(meritCategories).all().map((c) => [c.id, c.name]));
+    const history = awards.map((a) => ({ points: a.points, category: catNames.get(a.categoryId) ?? '—', note: a.note, at: a.at }));
+    return { total, history };
   }),
 });
 

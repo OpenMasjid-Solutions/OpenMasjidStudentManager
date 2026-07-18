@@ -9,6 +9,21 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.18.0]
+
+### Added
+- **Per-child academics in the parent portal** (§4/§5/§15) — tapping a child on the family home opens
+  a phone-first page with their **grades** (gradebook items + the child's score, by class), an
+  **attendance** summary (present / late / excused / absent tallies + recent records) and **merit
+  points** (running total + award history). New parent-scoped `portal.childGrades` / `childAttendance`
+  / `childMerit`, each gated by `assertStudentAccess` — a parent can read only their own kids, never
+  another family's (enforced in the query, not the UI). i18n en/ar/ur. 1 new test (151 total) plus the
+  scoping wall; browser-verified end to end.
+
+### Fixed (from an adversarial review of the slice)
+- The child page now distinguishes **loading and errors from a genuinely empty record** — a transient
+  failure no longer tells a parent their child has "No grades yet." (mirrors the family-home guard).
+
 ## [0.17.0]
 
 ### Added

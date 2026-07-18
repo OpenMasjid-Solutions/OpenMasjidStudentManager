@@ -10,7 +10,7 @@ import { staggerContainer, staggerItem } from '../../lib/motion';
 import { trpc } from '../../lib/trpc';
 import { formatMoney } from '../../lib/money';
 
-export function FamilyHome() {
+export function FamilyHome({ onOpenChild }: { onOpenChild: (studentId: string, name: string) => void }) {
   const { t } = useTranslation();
   const q = trpc.portal.myFamily.useQuery();
   const reportsQ = trpc.portal.myReports.useQuery();
@@ -48,10 +48,10 @@ export function FamilyHome() {
                 <div className="fam-empty">{t('family.noChildren')}</div>
               ) : (
                 fam.students.map((s) => (
-                  <div key={s.id} className="kid-row glass">
+                  <button key={s.id} type="button" className="kid-row glass fx-glint" onClick={() => onOpenChild(s.id, `${s.firstName} ${s.lastName}`.trim())} style={{ width: '100%', textAlign: 'start', cursor: 'pointer' }}>
                     <span className="kid-name">{s.firstName} {s.lastName}</span>
                     <span className="kid-pin"><span className="pin-lbl">{t('directory.pin')}</span>{s.pin}</span>
-                  </div>
+                  </button>
                 ))
               )}
             </section>

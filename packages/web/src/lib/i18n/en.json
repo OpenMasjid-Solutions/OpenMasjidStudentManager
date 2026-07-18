@@ -465,6 +465,18 @@
     "loadError": "We couldn’t load your family right now. Please try again in a moment.",
     "reportCards": "Report cards & transcripts",
     "reportCard": "Report card",
-    "transcript": "Transcript"
+    "transcript": "Transcript",
+    "back": "Back",
+    "grades": "Grades",
+    "noGrades": "No grades yet.",
+    "attendance": "Attendance",
+    "noAttendance": "No attendance recorded yet.",
+    "merit": "Merit points",
+    "meritPoints": "total points",
+    "noMerit": "No merit points yet.",
+    "att_present": "Present",
+    "att_absent": "Absent",
+    "att_late": "Late",
+    "att_excused": "Excused"
   }
 }

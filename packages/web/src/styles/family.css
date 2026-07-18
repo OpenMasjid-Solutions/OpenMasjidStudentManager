@@ -98,4 +98,19 @@
 
 .fam-empty { color: var(--color-text-muted, #9fb4aa); font-size: 0.92rem; padding: 0.5rem 0.25rem; }
 
+/* Attendance tallies — four compact stat cards. */
+.att-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.5rem; margin-block-end: 0.7rem; }
+.att-stat { border-radius: 12px; padding: 0.6rem 0.35rem; text-align: center; }
+.att-stat .n { font-size: 1.35rem; font-weight: 750; font-variant-numeric: tabular-nums; line-height: 1; }
+.att-stat .k { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.04em; color: var(--color-text-muted, #9fb4aa); margin-block-start: 0.2rem; }
+.att-present .n { color: var(--color-success, #46c99a); }
+.att-late .n { color: var(--color-gold, #d4af37); }
+.att-excused .n { color: var(--color-text, #eaf3ee); }
+.att-absent .n { color: var(--color-danger, #e5645b); }
+
+.att-chip { margin-inline-start: auto; font-size: 0.72rem; }
+.att-chip.att-present { color: var(--color-success, #46c99a); }
+.att-chip.att-late { color: var(--color-gold, #d4af37); }
+.att-chip.att-absent { color: var(--color-danger, #e5645b); }
+
 /* The anonymous invite-accept / register pages reuse the .auth-card look — no extra CSS. */

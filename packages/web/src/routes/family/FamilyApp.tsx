@@ -3,17 +3,20 @@
 /** The parent portal shell — phone-first (CLAUDE.md §15), NOT the windowed staff shell. A sticky
  *  top bar (brand + account menu: theme/language/sign-out) over a single scrolling column. Bottom
  *  nav + more tabs (grades, schedule, pay) arrive with later slices. Parents work LAN + tunnel. */
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { SceneBackground } from '../../components/SceneBackground';
 import { ProfileMenu } from '../../components/ProfileMenu';
 import { MasjidMark } from '../../components/Glyphs';
 import { trpc } from '../../lib/trpc';
 import { FamilyHome } from './Home';
+import { ChildDetail } from './ChildDetail';
 
 export function FamilyApp() {
   const { t } = useTranslation();
   const utils = trpc.useUtils();
   const onSignedOut = () => void utils.auth.session.invalidate();
+  const [child, setChild] = useState<{ id: string; name: string } | null>(null);
 
   return (
     <div className="family-shell">
@@ -27,11 +30,17 @@ export function FamilyApp() {
         <ProfileMenu onSignedOut={onSignedOut} />
       </header>
       <main className="family-main">
-        <div className="fam-hello">
-          <h1>{t('family.myFamily')}</h1>
-          <p>{t('family.subtitle')}</p>
-        </div>
-        <FamilyHome />
+        {child ? (
+          <ChildDetail studentId={child.id} name={child.name} onBack={() => setChild(null)} />
+        ) : (
+          <>
+            <div className="fam-hello">
+              <h1>{t('family.myFamily')}</h1>
+              <p>{t('family.subtitle')}</p>
+            </div>
+            <FamilyHome onOpenChild={(id, name) => setChild({ id, name })} />
+          </>
+        )}
       </main>
     </div>
   );
