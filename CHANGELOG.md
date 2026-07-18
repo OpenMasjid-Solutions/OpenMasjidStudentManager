@@ -9,6 +9,23 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.17.0]
+
+### Added
+- **Report cards & transcripts in the parent portal** (§4/§5/§14) — the documents families keep,
+  now in the portal. Parents see and **download their own kids' PUBLISHED report cards** (the latest
+  published version per class) **and transcripts**, right on the My-Family home. The PDFs are served
+  only through the authed route, which now also honors the **parent** role: a parent may fetch an
+  artifact **only when it is published AND belongs to one of their kids** — never another family's,
+  never an unpublished draft (admin/assigned-teacher access and the finance/staff walls are
+  unchanged). New `portal.myReports` (published-only, own-kids-only, scoped in the query). i18n
+  en/ar/ur. 2 new tests (150 total); browser-verified own published card → 200, unpublished → 403.
+
+### Fixed (from an adversarial review of the slice)
+- The report-card, transcript, and combined-class PDF responses now send **`Cache-Control:
+  no-store`**, matching the family-statement route — so a minor's academic PDF opened over the
+  tunnel on a shared device isn't left in the browser cache after the session ends.
+
 ## [0.16.0]
 
 ### Added

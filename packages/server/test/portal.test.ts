@@ -8,7 +8,7 @@
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { freshApp, makeCtx } from './harness';
-import { invites, guardianUsers, guardianFamilies, guardians, emergencyContacts, paymentAllocations, payments, invoiceItems, invoices, enrollmentFees, feePlans, enrollments, classTeachers, classSubjects, classSessions, classes, terms, students, families, sessions, users, auditLog } from '../src/db/schema';
+import { reportCards, transcripts, invites, guardianUsers, guardianFamilies, guardians, emergencyContacts, paymentAllocations, payments, invoiceItems, invoices, enrollmentFees, feePlans, enrollments, classTeachers, classSubjects, classSessions, classes, terms, students, families, sessions, users, auditLog } from '../src/db/schema';
 import type { Role } from '../src/db/schema';
 
 let app: Awaited<ReturnType<typeof freshApp>>;
@@ -19,7 +19,7 @@ const pub = (origin: 'lan' | 'tunnel' = 'lan') => app.appRouter.createCaller(mak
 beforeAll(async () => { app = await freshApp(); });
 beforeEach(() => {
   const { db } = app.dbmod;
-  for (const t of [invites, guardianUsers, guardianFamilies, guardians, emergencyContacts, paymentAllocations, payments, invoiceItems, invoices, enrollmentFees, feePlans, enrollments, classTeachers, classSubjects, classSessions, classes, terms, students, families, sessions, users, auditLog]) db.delete(t).run();
+  for (const t of [reportCards, transcripts, invites, guardianUsers, guardianFamilies, guardians, emergencyContacts, paymentAllocations, payments, invoiceItems, invoices, enrollmentFees, feePlans, enrollments, classTeachers, classSubjects, classSessions, classes, terms, students, families, sessions, users, auditLog]) db.delete(t).run();
 });
 
 /** Two families, each with a student and a guardian-with-email; family A also has a fee+invoice+payment. */
@@ -34,12 +34,30 @@ async function scenario() {
   await admin.classes.enroll({ classId: cls.id, studentId: sA.id });
   const gA = await admin.people.guardianCreate({ familyId: famA.id, name: 'Abu Yusuf', email: 'AbuYusuf@example.com' });
   const gB = await admin.people.guardianCreate({ familyId: famB.id, name: 'Abu Bilal', email: 'abubilal@example.com' });
+  const clsB = await admin.classes.classCreate({ termId: term.id, name: 'Maktab B', type: 'maktab' });
+  await admin.classes.enroll({ classId: clsB.id, studentId: sB.id });
   // Family A: a fee + invoice + partial payment, so the balance view has content.
   const plan = await admin.billing.feePlanCreate({ name: 'Tuition', amountCents: 5000, cadence: 'monthly' });
   for (const f of await admin.billing.familyFees({ familyId: famA.id })) await admin.billing.assignFee({ enrollmentId: f.enrollmentId, feePlanId: plan.id });
   await admin.billing.generateFamily({ familyId: famA.id, periodKey: '2026-07', label: 'Tuition — Jul 2026', dueDate: '2026-07-01' });
   await admin.billing.recordManualPayment({ familyId: famA.id, amountCents: 2000, channel: 'cash', occurredAt: '2026-07-03' });
-  return { admin, famA: famA.id, famB: famB.id, gA: gA.id, gB: gB.id, sA: sA.id };
+  return { admin, famA: famA.id, famB: famB.id, gA: gA.id, gB: gB.id, sA: sA.id, sB: sB.id, cls: cls.id, clsB: clsB.id, term: term.id };
+}
+
+/** Insert a report-card row directly (bypassing the exam→PDF pipeline) for scoping tests. */
+function mkCard(studentId: string, classId: string, termId: string, version: number, published: boolean) {
+  const { db } = app.dbmod;
+  const ts = new Date();
+  const id = `rc_${studentId}_${classId}_${version}`;
+  db.insert(reportCards).values({ id, studentId, classId, termId, version, pdfPath: `${id}.pdf`, dataJson: null, generatedByUserId: null, generatedByName: 'Admin', generatedAt: ts, publishedAt: published ? ts : null, createdAt: ts, updatedAt: ts }).run();
+  return id;
+}
+function mkTranscript(studentId: string, version: number, published: boolean) {
+  const { db } = app.dbmod;
+  const ts = new Date();
+  const id = `tr_${studentId}_${version}`;
+  db.insert(transcripts).values({ id, studentId, version, pdfPath: `${id}.pdf`, dataJson: null, generatedByUserId: null, generatedByName: 'Admin', generatedAt: ts, publishedAt: published ? ts : null, createdAt: ts, updatedAt: ts }).run();
+  return id;
 }
 
 /** Run the real invite door for a guardian; returns the new parent userId. */
@@ -157,5 +175,34 @@ describe('parent portal scoping (the wall)', () => {
     const uid = await acceptInvite(admin, gA);
     const res = await caller('parent', { origin: 'tunnel', userId: uid }).portal.myFamily();
     expect(res.families).toHaveLength(1);
+  });
+});
+
+describe('portal.myReports (published report cards + transcripts)', () => {
+  it('returns the latest PUBLISHED card per class + published transcripts, own kids only', async () => {
+    const { admin, gA, sA, sB, cls, clsB, term } = await scenario();
+    mkCard(sA, cls, term, 1, false); // an unpublished v1
+    mkCard(sA, cls, term, 2, true); // the published v2 (should be surfaced)
+    mkTranscript(sA, 1, true); // published transcript
+    mkCard(sB, clsB, term, 1, true); // another family's card — must NOT leak
+    const uid = await acceptInvite(admin, gA);
+    const res = await caller('parent', { userId: uid }).portal.myReports();
+    // Only child A appears, and only their published artifacts.
+    const withReports = res.children.filter((c) => c.reportCards.length || c.transcripts.length);
+    expect(withReports).toHaveLength(1);
+    expect(withReports[0].studentId).toBe(sA);
+    expect(withReports[0].reportCards).toHaveLength(1);
+    expect(withReports[0].reportCards[0].version).toBe(2); // latest published, not the unpublished v1
+    expect(withReports[0].transcripts).toHaveLength(1);
+    // Nothing from student B (other family).
+    expect(res.children.every((c) => c.studentId !== sB)).toBe(true);
+  });
+
+  it('hides an unpublished-only child’s reports', async () => {
+    const { admin, gA, sA, cls, term } = await scenario();
+    mkCard(sA, cls, term, 1, false); // unpublished only
+    const uid = await acceptInvite(admin, gA);
+    const res = await caller('parent', { userId: uid }).portal.myReports();
+    expect(res.children.every((c) => c.reportCards.length === 0 && c.transcripts.length === 0)).toBe(true);
   });
 });

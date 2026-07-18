@@ -462,6 +462,9 @@
     "passwordsDontMatch": "Those passwords don’t match.",
     "registerTitle": "Sign up",
     "registerUnavailable": "Self sign-up isn’t available yet. Please ask the office for a portal invite link.",
-    "loadError": "We couldn’t load your family right now. Please try again in a moment."
+    "loadError": "We couldn’t load your family right now. Please try again in a moment.",
+    "reportCards": "Report cards & transcripts",
+    "reportCard": "Report card",
+    "transcript": "Transcript"
   }
 }

@@ -10,10 +10,10 @@
 import { and, eq, desc, inArray } from 'drizzle-orm';
 import { router, parentProcedure } from './trpc';
 import { db } from '../db';
-import { families, students, invoices, payments } from '../db/schema';
+import { families, students, invoices, payments, reportCards, transcripts, classes } from '../db/schema';
 import { familyBalance, invoiceTotal, invoicePaid } from '../billing/ledger';
 import { getCurrency } from '../settings';
-import { parentFamilyIds } from './familyAccess';
+import { parentFamilyIds, parentStudentIds } from './familyAccess';
 
 export const portalRouter = router({
   /** Everything the My-Family home needs, for each family this parent is linked to. */
@@ -56,7 +56,52 @@ export const portalRouter = router({
     });
     return { currency, families: list };
   }),
+
+  /** Published report cards + transcripts for the parent's kids (the documents families keep, §15).
+   *  PUBLISHED-only and own-kids-only — the PDFs themselves are served by the authed /reports route,
+   *  which re-checks the same wall. For report cards we surface the latest published version per class. */
+  myReports: parentProcedure.query(({ ctx }) => {
+    const kidIds = parentStudentIds(ctx);
+    if (!kidIds.length) return { children: [] as ReportChild[] };
+
+    const kids = db.select({ id: students.id, firstName: students.firstName, lastName: students.lastName }).from(students).where(inArray(students.id, kidIds)).orderBy(students.firstName).all();
+
+    const children: ReportChild[] = kids.map((k) => {
+      // Report cards: published only; keep the highest-version published card per class.
+      const cards = db
+        .select({ id: reportCards.id, classId: reportCards.classId, version: reportCards.version, generatedAt: reportCards.generatedAt, publishedAt: reportCards.publishedAt })
+        .from(reportCards)
+        .where(and(eq(reportCards.studentId, k.id)))
+        .orderBy(desc(reportCards.version))
+        .all()
+        .filter((c) => c.publishedAt != null);
+      const latestPerClass = new Map<string, (typeof cards)[number]>();
+      for (const c of cards) if (!latestPerClass.has(c.classId)) latestPerClass.set(c.classId, c); // first = highest version
+      const classNames = new Map(db.select({ id: classes.id, name: classes.name }).from(classes).where(inArray(classes.id, [...latestPerClass.keys(), '__none__'])).all().map((r) => [r.id, r.name]));
+      const reportCardList = [...latestPerClass.values()].map((c) => ({ id: c.id, className: classNames.get(c.classId) ?? '—', version: c.version, generatedAt: c.generatedAt }));
+
+      // Transcripts: published only; latest published version.
+      const trs = db
+        .select({ id: transcripts.id, version: transcripts.version, generatedAt: transcripts.generatedAt, publishedAt: transcripts.publishedAt })
+        .from(transcripts)
+        .where(eq(transcripts.studentId, k.id))
+        .orderBy(desc(transcripts.version))
+        .all()
+        .filter((tr) => tr.publishedAt != null);
+      const transcriptList = trs.length ? [{ id: trs[0].id, version: trs[0].version, generatedAt: trs[0].generatedAt }] : [];
+
+      return { studentId: k.id, name: `${k.firstName} ${k.lastName}`.trim(), reportCards: reportCardList, transcripts: transcriptList };
+    });
+    return { children };
+  }),
 });
+
+type ReportChild = {
+  studentId: string;
+  name: string;
+  reportCards: { id: string; className: string; version: number; generatedAt: Date }[];
+  transcripts: { id: string; version: number; generatedAt: Date }[];
+};
 
 type FamilyView = {
   id: string;
