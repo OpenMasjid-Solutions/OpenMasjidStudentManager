@@ -22,11 +22,12 @@ import { seedMeritDefaults } from './merit/categories';
 import { appRouter, type AppRouter } from './trpc/router';
 import { createContext } from './trpc/trpc';
 import { registerReportRoutes } from './reports/routes';
+import { registerStatementRoutes } from './billing/statementRoutes';
 
 const log = makeLog('main');
 
 // Paths served/handled outside the SPA (the web app is a client-side router).
-const NON_SPA_PREFIXES = ['/trpc', '/api', '/fabric', '/apply', '/reports', '/healthz'];
+const NON_SPA_PREFIXES = ['/trpc', '/api', '/fabric', '/apply', '/reports', '/statements', '/healthz'];
 
 async function main(): Promise<void> {
   // Apply committed migrations before accepting traffic, then clear stale sessions.
@@ -69,6 +70,9 @@ async function main(): Promise<void> {
 
   // Authed report-card PDF serving (its own role × origin checks; §14). Before the SPA fallback.
   registerReportRoutes(app);
+
+  // Authed printable family statements (admin LAN-only / finance LAN+tunnel; §5, §14).
+  registerStatementRoutes(app);
 
   // Production: serve the built web UI + SPA fallback. In dev, Vite serves the UI
   // (config.publicDir is empty), so this whole block is skipped.

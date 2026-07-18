@@ -5,6 +5,7 @@
  *  integer cents end-to-end; the server ledger is the source of truth. RTL-safe. */
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Printer } from 'lucide-react';
 import { trpc } from '../lib/trpc';
 import { formatMoney, parseCents } from '../lib/money';
 
@@ -51,7 +52,10 @@ export function FamilyBilling({ familyId, currency }: { familyId: string; curren
     <div className="win-content">
       {/* Balance */}
       <section className="section glass" style={{ padding: '1rem 1.1rem' }}>
-        <div className="section-head"><h2>{t('billing.balance')}</h2></div>
+        <div className="section-head">
+          <h2>{t('billing.balance')}</h2>
+          <a className="btn btn--ghost btn--sm" href={`/statements/family/${familyId}`} target="_blank" rel="noopener noreferrer"><Printer size={14} /> {t('billing.printStatement')}</a>
+        </div>
         {bal && (
           <div className="bal-big" style={{ color: bal.owedCents > 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>
             {bal.owedCents > 0 ? money(bal.owedCents) : bal.creditCents > 0 ? `${money(bal.creditCents)} ${t('billing.credit')}` : money(0)}

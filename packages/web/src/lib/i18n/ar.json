@@ -431,6 +431,7 @@
     "st_open": "مفتوحة",
     "st_partially_paid": "جزئية",
     "st_paid": "مدفوعة",
-    "st_void": "ملغاة"
+    "st_void": "ملغاة",
+    "printStatement": "طباعة كشف الحساب"
   }
 }

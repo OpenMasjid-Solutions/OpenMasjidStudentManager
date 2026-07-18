@@ -431,6 +431,7 @@
     "st_open": "کھلی",
     "st_partially_paid": "جزوی",
     "st_paid": "ادا شدہ",
-    "st_void": "منسوخ"
+    "st_void": "منسوخ",
+    "printStatement": "اسٹیٹمنٹ پرنٹ کریں"
   }
 }

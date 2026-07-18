@@ -431,6 +431,7 @@
     "st_open": "Open",
     "st_partially_paid": "Partial",
     "st_paid": "Paid",
-    "st_void": "Void"
+    "st_void": "Void",
+    "printStatement": "Print statement"
   }
 }

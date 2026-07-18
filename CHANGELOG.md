@@ -9,6 +9,27 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.15.0]
+
+### Added
+- **Printable family statements** (§4/§14) — a self-contained, print-CSS HTML sheet finance/admin
+  hand to a family. It shows the family balance, open invoices (oldest-due-first), recent payments,
+  **each child's PIN**, the "pay with your child's name + PIN at the donation site or kiosk" line,
+  and a **QR code to the parent-portal signup** (points at the tunnel public URL when set, else the
+  LAN address the request came in on). A "Print statement" button opens it from the family billing
+  window; a Print button in the sheet is hidden in the print stylesheet, and the layout is neutral
+  ink so it photocopies cleanly in black-and-white. Served by an authed route that re-checks the
+  role × origin matrix on every fetch — **admin (LAN only) and finance (LAN + tunnel) only; teacher
+  and parent never** — with `Cache-Control: no-store` and never on a public static mount (it embeds
+  minors' PINs, §14). Every embedded value (school/family/student names, memos, labels) is
+  HTML-escaped. Student PIN generate/regenerate/view already shipped (people router + Family detail);
+  per-PIN lookup lockout lands with the Fabric lookup endpoint it protects. 6 new tests (137 total).
+
+### Fixed (from an adversarial review of the slice)
+- Open invoices on the statement now sort **oldest-due-first with undated invoices last**, matching
+  the ledger's allocation order (SQLite sorts NULL first under a bare `ASC`, which would otherwise
+  float an undated invoice to the top of the printed sheet).
+
 ## [0.14.0]
 
 ### Added
