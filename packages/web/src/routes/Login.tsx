@@ -44,7 +44,8 @@ export function Login({ tunnel }: { tunnel?: boolean }) {
       <form onSubmit={submit}>
         <div className="field">
           <label className="label" htmlFor="li-username">{t('auth.username')}</label>
-          <input id="li-username" className="input glass-inset" autoComplete="username" value={username}
+          <input id="li-username" className="input glass-inset" autoComplete="username" autoCapitalize="none"
+            autoCorrect="off" spellCheck={false} value={username}
             onChange={(e) => setUsername(e.target.value)} required />
         </div>
 

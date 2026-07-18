@@ -19,6 +19,7 @@ import { reportsRouter } from './reports';
 import { settingsRouter } from './settings';
 import { commentsRouter } from './comments';
 import { billingRouter } from './billing';
+import { portalRouter } from './portal';
 import { config, fabricConfigured } from '../config';
 
 export const appRouter = router({
@@ -44,6 +45,7 @@ export const appRouter = router({
   settings: settingsRouter,
   comments: commentsRouter,
   billing: billingRouter,
+  portal: portalRouter,
 });
 
 export type AppRouter = typeof appRouter;

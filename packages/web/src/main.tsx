@@ -12,6 +12,7 @@ import './styles/app.css';
 import './styles/fonts-arabic.css';
 import './styles/shell.css';
 import './styles/admin.css';
+import './styles/family.css';
 import './lib/i18n';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { prefsStore } from './lib/prefs';

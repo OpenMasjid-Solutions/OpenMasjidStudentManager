@@ -10,20 +10,30 @@
  */
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { eq } from 'drizzle-orm';
-import { router, publicProcedure, protectedProcedure } from './trpc';
+import { randomBytes } from 'node:crypto';
+import { and, eq, isNull, sql } from 'drizzle-orm';
+import { router, publicProcedure, protectedProcedure, adminOrFinanceProcedure, auditActor } from './trpc';
 import { db } from '../db';
-import { users, type Role } from '../db/schema';
+import { users, guardians, guardianUsers, invites, type Role } from '../db/schema';
 import { rid } from '../db/ids';
 import { hashPassword, verifyPassword, dummyHash, MIN_PASSWORD_LENGTH } from '../auth/passwords';
-import { createSession, destroySession, cookieOptions, COOKIE, SSO_SESSION_TTL_MS } from '../auth/sessions';
+import { createSession, destroySession, cookieOptions, COOKIE, SSO_SESSION_TTL_MS, hashToken } from '../auth/sessions';
 import { probePlatformSession } from '../fabric/platform';
-import { fabricConfigured } from '../config';
+import { fabricConfigured, config } from '../config';
 import { clientIp } from '../security/origin';
-import { loginLimiter } from '../security/rateLimit';
+import { loginLimiter, inviteAcceptLimiter } from '../security/rateLimit';
+import { audit } from '../audit';
 
-const USERNAME = z.string().trim().min(1).max(64);
+const USERNAME = z.string().trim().min(1).max(254); // fits a full email (parent portal logins)
 const PASSWORD = z.string().min(1).max(200);
+const ID = z.string().min(1).max(64);
+const TOKEN = z.string().min(1).max(200);
+const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days (§12)
+
+/** The parent-portal signup/invite base — the tunnel public URL when set, else relative. */
+function portalBase(): string {
+  return config.omosPublicUrl ? config.omosPublicUrl.replace(/\/+$/, '') : '';
+}
 
 function hasAnyUser(): boolean {
   return !!db.select({ id: users.id }).from(users).limit(1).get();
@@ -116,7 +126,11 @@ export const authRouter = router({
         throw new TRPCError({ code: 'TOO_MANY_REQUESTS', message: `Too many attempts. Try again in ${Math.ceil(wait / 1000)}s.` });
       }
 
-      const user = db.select().from(users).where(eq(users.username, input.username)).get();
+      // Case-insensitive match: parent accounts store the guardian email lowercased, and phone
+      // keyboards auto-capitalize — so a case-sensitive lookup would lock legitimate users out.
+      // Works for existing mixed-case admin/staff usernames too (compared via lower()).
+      const uname = input.username.trim().toLowerCase();
+      const user = db.select().from(users).where(sql`lower(${users.username}) = ${uname}`).get();
       const isTunnel = ctx.origin === 'tunnel';
       // A login can legitimately succeed here only for an active account that isn't an
       // admin signing in over the tunnel. Every other case still runs a verify against a
@@ -154,5 +168,87 @@ export const authRouter = router({
       }
       db.update(users).set({ passwordHash: await hashPassword(input.newPassword), mustChangePassword: false, updatedAt: new Date() }).where(eq(users.id, userId)).run();
       return { ok: true as const };
+    }),
+
+  // ── Parent portal: invites (CLAUDE.md §12) ──────────────────────────────────
+  /** finance/admin creates a one-time portal invite for a guardian. Returns the link to share —
+   *  emailed once SMTP lands; for now the office copies/prints it. The guardian needs an email
+   *  (it becomes their portal login) and must not already have an account. */
+  inviteCreate: adminOrFinanceProcedure.input(z.object({ guardianId: ID })).mutation(({ ctx, input }) => {
+    const g = db.select().from(guardians).where(eq(guardians.id, input.guardianId)).get();
+    if (!g) throw new TRPCError({ code: 'NOT_FOUND', message: 'Guardian not found.' });
+    const email = (g.email ?? '').trim().toLowerCase();
+    if (!email) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Add an email for this guardian before inviting them to the portal.' });
+    if (db.select({ userId: guardianUsers.userId }).from(guardianUsers).where(eq(guardianUsers.guardianId, g.id)).get()) {
+      throw new TRPCError({ code: 'CONFLICT', message: 'This guardian already has a portal account.' });
+    }
+    if (db.select({ id: users.id }).from(users).where(eq(users.username, email)).get()) {
+      throw new TRPCError({ code: 'CONFLICT', message: 'That email is already used by another account.' });
+    }
+    const token = randomBytes(32).toString('base64url');
+    const ts = new Date();
+    db.insert(invites).values({ id: rid('inv'), tokenHash: hashToken(token), guardianId: g.id, createdByUserId: ctx.session.userId ?? null, createdAt: ts, expiresAt: new Date(ts.getTime() + INVITE_TTL_MS) }).run();
+    audit(auditActor(ctx), 'invite.create', { entity: 'guardian', entityId: g.id });
+    // The RAW token rides only in the returned link (never logged), like a session cookie.
+    return { token, url: `${portalBase()}/family/invite?token=${token}`, email, guardianName: g.name };
+  }),
+
+  /** Look up a pending invite (for the accept page to greet the guardian). Uniform invalid
+   *  response — tokens are 256-bit, so there is nothing to enumerate. */
+  inviteInfo: publicProcedure.input(z.object({ token: TOKEN })).query(({ input }) => {
+    const inv = db.select().from(invites).where(and(eq(invites.tokenHash, hashToken(input.token)), isNull(invites.usedAt))).get();
+    if (!inv || inv.expiresAt.getTime() <= Date.now()) return { valid: false as const };
+    const g = db.select({ name: guardians.name }).from(guardians).where(eq(guardians.id, inv.guardianId)).get();
+    if (!g) return { valid: false as const };
+    return { valid: true as const, guardianName: g.name };
+  }),
+
+  /** Accept a portal invite: set a password → create the parent account + guardian link → sign in.
+   *  Rate-limited per IP; single-use is re-checked inside the transaction to close the race. */
+  inviteAccept: publicProcedure
+    .input(z.object({ token: TOKEN, password: z.string().min(MIN_PASSWORD_LENGTH).max(200) }))
+    .mutation(async ({ ctx, input }) => {
+      const key = clientIp(ctx.req);
+      const wait = inviteAcceptLimiter.retryAfterMs(key);
+      if (wait > 0) throw new TRPCError({ code: 'TOO_MANY_REQUESTS', message: `Too many attempts. Try again in ${Math.ceil(wait / 1000)}s.` });
+
+      const inv = db.select().from(invites).where(and(eq(invites.tokenHash, hashToken(input.token)), isNull(invites.usedAt))).get();
+      const g = inv ? db.select().from(guardians).where(eq(guardians.id, inv.guardianId)).get() : null;
+      const email = (g?.email ?? '').trim().toLowerCase();
+      const valid =
+        !!inv &&
+        inv.expiresAt.getTime() > Date.now() &&
+        !!g &&
+        !!email &&
+        !db.select({ userId: guardianUsers.userId }).from(guardianUsers).where(eq(guardianUsers.guardianId, g.id)).get() &&
+        !db.select({ id: users.id }).from(users).where(eq(users.username, email)).get();
+      if (!valid) {
+        inviteAcceptLimiter.fail(key);
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'This invite link is invalid or has already been used. Ask the office for a new one.' });
+      }
+
+      const passwordHash = await hashPassword(input.password); // hash BEFORE the txn (no await inside)
+      const userId = rid('usr');
+      const ts = new Date();
+      const created = db.transaction((tx) => {
+        // Re-check single-use + uniqueness atomically (closes a double-accept race).
+        const live = tx.select({ usedAt: invites.usedAt }).from(invites).where(eq(invites.id, inv!.id)).get();
+        if (!live || live.usedAt) return false;
+        if (tx.select({ userId: guardianUsers.userId }).from(guardianUsers).where(eq(guardianUsers.guardianId, g!.id)).get()) return false;
+        if (tx.select({ id: users.id }).from(users).where(eq(users.username, email)).get()) return false;
+        tx.insert(users).values({ id: userId, username: email, email, passwordHash, role: 'parent', status: 'active', mustChangePassword: false, displayName: g!.name, createdAt: ts, updatedAt: ts }).run();
+        tx.insert(guardianUsers).values({ guardianId: g!.id, userId, createdAt: ts }).run();
+        tx.update(invites).set({ usedAt: ts }).where(eq(invites.id, inv!.id)).run();
+        return true;
+      });
+      if (!created) {
+        inviteAcceptLimiter.fail(key);
+        throw new TRPCError({ code: 'CONFLICT', message: 'This invite could not be completed. Ask the office for a new one.' });
+      }
+      inviteAcceptLimiter.succeed(key);
+      audit({ userId, role: 'parent', name: g!.name }, 'invite.accept', { entity: 'guardian', entityId: g!.id });
+      const { token } = createSession({ userId, role: 'parent', source: 'local', username: email });
+      ctx.res.setCookie(COOKIE, token, cookieOptions(ctx.https));
+      return { ok: true as const, role: 'parent' as Role };
     }),
 });

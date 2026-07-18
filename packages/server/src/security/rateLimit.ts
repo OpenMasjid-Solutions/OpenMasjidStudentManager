@@ -62,3 +62,7 @@ export class LoginLimiter {
 
 /** Shared instance used by the auth router. */
 export const loginLimiter = new LoginLimiter();
+
+/** Parent-portal invite acceptance — internet-facing, so per-IP throttled (§14). Tokens are
+ *  256-bit and unguessable; this just caps abusive hammering of the accept endpoint. */
+export const inviteAcceptLimiter = new LoginLimiter({ maxFailures: 10, windowMs: 15 * 60_000, blockMs: 15 * 60_000 });

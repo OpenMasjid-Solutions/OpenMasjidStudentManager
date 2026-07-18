@@ -41,7 +41,8 @@
     "back": "Back",
     "loading": "Loading…",
     "close": "Close",
-    "delete": "Delete"
+    "delete": "Delete",
+    "copy": "Copy"
   },
   "directory": {
     "title": "Directory",
@@ -74,7 +75,9 @@
     "emergency": "Emergency",
     "emergencyContacts": "Emergency contacts",
     "addContact": "Add contact",
-    "noContacts": "No emergency contacts"
+    "noContacts": "No emergency contacts",
+    "inviteToPortal": "Invite to portal",
+    "inviteHint": "Creates a one-time sign-up link (valid 7 days) — copy it to the guardian. They need an email on file."
   },
   "nav": {
     "dashboard": "Dashboard",
@@ -433,5 +436,32 @@
     "st_paid": "Paid",
     "st_void": "Void",
     "printStatement": "Print statement"
+  },
+  "family": {
+    "title": "Parent Portal",
+    "myFamily": "My family",
+    "subtitle": "Your children, balance, and payments",
+    "balance": "Balance",
+    "due": "due",
+    "inCredit": "in credit",
+    "allSettled": "All settled — thank you",
+    "children": "Children",
+    "noChildren": "No students on file.",
+    "openInvoices": "Open invoices",
+    "noOpenInvoices": "Nothing due right now.",
+    "paymentHistory": "Payment history",
+    "noPayments": "No payments yet.",
+    "reversed": "reversed",
+    "noFamily": "Your account isn’t linked to a family yet. Please contact the office.",
+    "acceptTitle": "Set up your portal account",
+    "acceptGreeting": "Welcome, {{name}}. Choose a password to finish setting up your account.",
+    "inviteInvalid": "This invite link is invalid or has expired. Please ask the office for a new one.",
+    "newPassword": "Password",
+    "confirmPassword": "Confirm password",
+    "createAccount": "Create account",
+    "passwordsDontMatch": "Those passwords don’t match.",
+    "registerTitle": "Sign up",
+    "registerUnavailable": "Self sign-up isn’t available yet. Please ask the office for a portal invite link.",
+    "loadError": "We couldn’t load your family right now. Please try again in a moment."
   }
 }

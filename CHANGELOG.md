@@ -9,6 +9,30 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.16.0]
+
+### Added
+- **Parent portal — the door + My-Family home** (§4/§5/§12/§14), the read-only first slice of the
+  headline feature. Finance/admin **invite a guardian to the portal** (one-time CSPRNG link, stored
+  SHA-256-hashed, single-use, 7-day expiry — emailed once SMTP lands; for now the office copies the
+  link). The guardian **accepts the invite** on an anonymous page (reachable over the Cloudflare
+  tunnel), sets a password → a `parent` account + `guardian_users` link are created and they're
+  signed in. The **phone-first portal** shows their **own family only** — kids (with PINs), the
+  family balance, open invoices, and the unified payment history. Parents work LAN **and** tunnel;
+  scoping is enforced in every query (via `guardian_users`), never the UI — a parent can't reach
+  another family or any staff data. `parent`-role wall, per-IP rate-limit on invite acceptance, and
+  an in-transaction single-use guard. i18n en/ar/ur. Grades / schedule / merit / attendance /
+  report cards, and self-registration (needs SMTP), arrive in later slices. 11 new tests (148 total).
+
+### Fixed (from an adversarial review of the slice)
+- **Parent login is now case-insensitive.** Accounts store the guardian email lowercased, but the
+  login lookup matched case-sensitively — so a parent whose email had any capital (or whose phone
+  keyboard auto-capitalized) was locked out. Lookup now compares on `lower()`, existing mixed-case
+  admin/staff logins still work, and the login field disables auto-capitalize/correct.
+- **Long emails no longer break login** — the login username cap now fits a full email address.
+- **The portal home distinguishes a load error from “no family”** — a transient failure no longer
+  tells a parent to call the office.
+
 ## [0.15.0]
 
 ### Added

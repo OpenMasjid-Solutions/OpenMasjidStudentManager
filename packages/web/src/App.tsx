@@ -19,6 +19,8 @@ import { ChangePassword } from './routes/ChangePassword';
 import { AdminApp } from './routes/admin/AdminApp';
 import { TeachApp } from './routes/teach/TeachApp';
 import { FinanceApp } from './routes/finance/FinanceApp';
+import { FamilyApp } from './routes/family/FamilyApp';
+import { InviteAccept } from './routes/InviteAccept';
 import { trpc } from './lib/trpc';
 
 function SetupOnLanNotice() {
@@ -34,11 +36,42 @@ function SetupOnLanNotice() {
   );
 }
 
+/** A short notice card (used for the self-registration-unavailable + missing-token cases). */
+function NoticeCard({ title, body }: { title: string; body: string }) {
+  return (
+    <motion.div className="auth-card glass-raised" variants={fadeRise} initial="initial" animate="animate">
+      <div className="auth-logo" style={{ display: 'flex', justifyContent: 'center', color: 'var(--color-gold)' }}>
+        <MasjidMark size={48} />
+      </div>
+      <h1 className="page-title" style={{ textAlign: 'center', fontSize: '1.4rem' }}>{title}</h1>
+      <p className="page-sub" style={{ textAlign: 'center' }}>{body}</p>
+    </motion.div>
+  );
+}
+
 export function App() {
   const { t } = useTranslation();
   const session = trpc.auth.session.useQuery(undefined, { retry: false });
   const health = trpc.health.useQuery(undefined, { retry: false });
   const s = session.data;
+
+  // Anonymous portal entry points reached via the emailed invite link / statement QR. These take
+  // precedence over the session gate (a parent sets a password here before they have an account).
+  const path = typeof window !== 'undefined' ? window.location.pathname : '/';
+  if (path === '/family/invite' || path === '/family/register') {
+    const token = path === '/family/invite' ? new URLSearchParams(window.location.search).get('token') : null;
+    let card: React.ReactNode;
+    if (path === '/family/register') card = <NoticeCard title={t('family.registerTitle')} body={t('family.registerUnavailable')} />;
+    else if (token) card = <InviteAccept token={token} />;
+    else card = <NoticeCard title={t('family.acceptTitle')} body={t('family.inviteInvalid')} />;
+    return (
+      <>
+        <SceneBackground />
+        <ShellControls />
+        <div className="auth-wrap">{card}</div>
+      </>
+    );
+  }
 
   // Forced password change (staff temp password / after an admin reset) blocks everything.
   if (!session.isLoading && !session.isError && s?.authenticated && s.user?.mustChangePassword) {
@@ -59,6 +92,7 @@ export function App() {
     if (s.user?.role === 'admin') return <AdminApp />;
     if (s.user?.role === 'teacher') return <TeachApp />;
     if (s.user?.role === 'finance') return <FinanceApp />;
+    if (s.user?.role === 'parent') return <FamilyApp />;
   }
 
   let screen: React.ReactNode;

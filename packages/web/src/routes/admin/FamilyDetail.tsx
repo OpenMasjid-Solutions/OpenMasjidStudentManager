@@ -32,6 +32,9 @@ export function FamilyDetail({ familyId }: { familyId: string }) {
   const regen = trpc.people.pinRegenerate.useMutation();
   const addGuardian = trpc.people.guardianCreate.useMutation();
   const addEC = trpc.people.emergencyContactAdd.useMutation();
+  const invite = trpc.auth.inviteCreate.useMutation();
+  const [inviteLinks, setInviteLinks] = useState<Record<string, string>>({});
+  const [inviteErr, setInviteErr] = useState<Record<string, string>>({});
 
   const [showStudent, setShowStudent] = useState(false);
   const [stu, setStu] = useState({ firstName: '', lastName: '', dob: '' });
@@ -75,6 +78,17 @@ export function FamilyDetail({ familyId }: { familyId: string }) {
   async function regenerate(id: string) {
     await regen.mutateAsync({ studentId: id });
     await refresh();
+  }
+  async function inviteToPortal(guardianId: string) {
+    setInviteErr((e) => ({ ...e, [guardianId]: '' }));
+    try {
+      const r = await invite.mutateAsync({ guardianId });
+      // No SMTP yet — the office copies this one-time link to the guardian (CLAUDE.md §12).
+      const full = r.url.startsWith('http') ? r.url : `${window.location.origin}${r.url}`;
+      setInviteLinks((m) => ({ ...m, [guardianId]: full }));
+    } catch (err) {
+      setInviteErr((e) => ({ ...e, [guardianId]: (err as Error).message }));
+    }
   }
 
   if (q.isLoading || !q.data) return <p className="empty">{t('common.loading')}</p>;
@@ -144,8 +158,18 @@ export function FamilyDetail({ familyId }: { familyId: string }) {
                 {g.phone && <span className="muted">· {g.phone}</span>}
                 {g.email && <span className="muted">· {g.email}</span>}
                 {g.isEmergencyContact && <span className="chip is-accent">{t('directory.emergency')}</span>}
+                <span className="spacer" style={{ marginInlineStart: 'auto' }} />
+                <button type="button" className="btn btn--ghost btn--sm" onClick={() => inviteToPortal(g.guardianId)} disabled={invite.isPending}>{t('directory.inviteToPortal')}</button>
+                {inviteErr[g.guardianId] && <p className="form-error" style={{ flexBasis: '100%', margin: '0.25rem 0 0' }}>{inviteErr[g.guardianId]}</p>}
+                {inviteLinks[g.guardianId] && (
+                  <div style={{ flexBasis: '100%', display: 'flex', gap: '0.4rem', alignItems: 'center', marginBlockStart: '0.4rem' }}>
+                    <input className="input glass-inset" readOnly value={inviteLinks[g.guardianId]} style={{ flex: 1, fontSize: '0.82rem' }} onFocus={(e) => e.currentTarget.select()} />
+                    <button type="button" className="btn btn--primary btn--sm" onClick={() => navigator.clipboard?.writeText(inviteLinks[g.guardianId])}>{t('common.copy')}</button>
+                  </div>
+                )}
               </div>
             ))}
+            <p className="hint">{t('directory.inviteHint')}</p>
           </div>
         )}
         {showGuardian && (

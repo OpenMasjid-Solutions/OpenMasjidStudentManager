@@ -160,6 +160,25 @@ export const guardianUsers = sqliteTable(
 );
 export type GuardianUser = typeof guardianUsers.$inferSelect;
 
+/** One-time parent-portal invite (CLAUDE.md §12). finance/admin creates one for a guardian; the
+ *  invite LINK carries an opaque CSPRNG token and we store only its SHA-256 (like sessions), so a
+ *  leaked row can't be replayed. Single-use (`usedAt`) and time-limited (`expiresAt`, 7 days).
+ *  Accepting it creates the parent `users` row + the `guardian_users` link. */
+export const invites = sqliteTable('invites', {
+  id: text('id').primaryKey(),
+  tokenHash: text('token_hash').notNull().unique(),
+  guardianId: text('guardian_id')
+    .notNull()
+    .references(() => guardians.id, { onDelete: 'cascade' }),
+  // Who created the invite — plain actor field (no FK), like audit_log: survives user changes
+  // and SSO admins (who have no local user row).
+  createdByUserId: text('created_by_user_id'),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+  usedAt: integer('used_at', { mode: 'timestamp_ms' }),
+});
+export type Invite = typeof invites.$inferSelect;
+
 /** Extra emergency contacts per family (guardians can also be flagged, above). */
 export const emergencyContacts = sqliteTable(
   'emergency_contacts',
