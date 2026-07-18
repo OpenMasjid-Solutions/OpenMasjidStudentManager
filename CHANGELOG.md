@@ -9,6 +9,29 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.12.0]
+
+### Added
+- **Term close → finals → transcripts** (§4/§9/§16) — the term-end machine. Closing a term
+  **freezes** each active enrollment's final grade into `term_finals` (recomputed on every close,
+  UNIQUE per student+class); reopening lets the office fix something and re-close. The final-grade
+  math now lives in ONE place (`grades/final.ts` `computeFinal`) shared by term close **and** the
+  report card's overall, so they can never diverge. **Transcripts** — a student's cumulative,
+  multi-year record built ONLY from the frozen finals (every term, every class with type, the
+  final % + scale band) — render on the same @react-pdf pipeline as report cards: immutable,
+  versioned, with a frozen data snapshot, served through the authed route (admin-LAN-only for now).
+  Admin UI: **Close/Reopen term** in Classes and a **Transcript** panel (generate/download/publish)
+  on the student record. 7 new tests (109 total).
+
+### Fixed (from an adversarial review of the slice)
+- **A closed term now locks its exam marks** — edits are refused until the term is reopened, so a
+  frozen final can never silently diverge from the marks.
+- **Re-closing a term reconciles its finals** — a since-withdrawn or mistaken enrollment's stale
+  final is dropped (no orphan rows on the transcript), and classes archived after they finished
+  still get their finals.
+- **Transcripts order terms by start date** (then creation), so backfilled historical terms sit in
+  the right place. Closed terms are now marked in the term list.
+
 ## [0.11.0]
 
 ### Added

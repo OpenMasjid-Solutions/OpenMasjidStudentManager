@@ -30,6 +30,12 @@ function resolveExamClass(examId: string, classId: string) {
   return ec;
 }
 
+/** A closed term's marks are frozen into term_finals; reject edits until it's reopened (§4). */
+function assertTermOpen(classId: string) {
+  const term = db.select({ closedAt: terms.closedAt }).from(classes).innerJoin(terms, eq(terms.id, classes.termId)).where(eq(classes.id, classId)).get();
+  if (term?.closedAt) throw new TRPCError({ code: 'BAD_REQUEST', message: 'This term is closed. Ask the office to reopen it before changing marks.' });
+}
+
 export const examsRouter = router({
   // ── Admin: exam definitions ────────────────────────────────────────────────
   examList: adminProcedure.input(z.object({ termId: ID })).query(({ input }) =>
@@ -153,6 +159,7 @@ export const examsRouter = router({
     .input(z.object({ examId: ID, classId: ID, studentId: ID, subjectId: ID, status: z.enum(['scored', 'absent', 'exempt', 'clear']), value: z.number().int().min(0).max(100000).nullable().optional() }))
     .mutation(({ ctx, input }) => {
       assertClassAccess(ctx, input.classId);
+      assertTermOpen(input.classId);
       const ec = resolveExamClass(input.examId, input.classId);
       const subj = db.select().from(examClassSubjects).where(and(eq(examClassSubjects.id, input.subjectId), eq(examClassSubjects.examClassId, ec.id))).get();
       if (!subj) throw new TRPCError({ code: 'NOT_FOUND', message: 'Subject not found for this exam.' });
@@ -181,6 +188,7 @@ export const examsRouter = router({
   /** Upsert (or clear, when empty) a student's term remark for a class. */
   setRemark: adminOrTeacherProcedure.input(z.object({ classId: ID, studentId: ID, remark: z.string().trim().max(2000) })).mutation(({ ctx, input }) => {
     assertClassAccess(ctx, input.classId);
+    assertTermOpen(input.classId);
     const cls = db.select({ termId: classes.termId }).from(classes).where(eq(classes.id, input.classId)).get();
     if (!cls) throw new TRPCError({ code: 'NOT_FOUND', message: 'Class not found.' });
     if (!db.select({ id: enrollments.id }).from(enrollments).where(and(eq(enrollments.classId, input.classId), eq(enrollments.studentId, input.studentId), eq(enrollments.status, 'active'))).get()) {

@@ -277,13 +277,16 @@ export type Incident = typeof incidents.$inferSelect;
 
 export type ClassType = 'maktab' | 'hifz' | 'nazrah' | 'alim' | 'custom';
 
-/** An academic term. `isCurrent` marks the one the admin is working in. */
+/** An academic term. `isCurrent` marks the one the admin is working in. `closedAt` freezes the
+ *  term: closing computes per-class final grades into `term_finals`; reopening clears it so a fix
+ *  can be made and the term re-closed (both audited — §4). */
 export const terms = sqliteTable('terms', {
   id: text('id').primaryKey(),
   name: text('name').notNull(),
   startDate: text('start_date'), // ISO date (optional)
   endDate: text('end_date'),
   isCurrent: integer('is_current', { mode: 'boolean' }).notNull().default(false),
+  closedAt: integer('closed_at', { mode: 'timestamp_ms' }),
   status: text('status').$type<'active' | 'archived'>().notNull().default('active'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
@@ -726,3 +729,64 @@ export const reportCards = sqliteTable(
   }),
 );
 export type ReportCard = typeof reportCards.$inferSelect;
+
+/** A frozen final grade for a student in a class+term, computed at term close from the class's
+ *  config (CLAUDE.md §4/§9). Transcripts read ONLY this — never live gradebooks. Recomputed
+ *  (upserted) each time the term is closed; the value is stable while the term stays closed.
+ *  `percentTenths` is percent×10 (integer — no float); null when there were no marks. */
+export const termFinals = sqliteTable(
+  'term_finals',
+  {
+    id: text('id').primaryKey(),
+    studentId: text('student_id')
+      .notNull()
+      .references(() => students.id, { onDelete: 'restrict' }),
+    classId: text('class_id')
+      .notNull()
+      .references(() => classes.id, { onDelete: 'restrict' }),
+    termId: text('term_id')
+      .notNull()
+      .references(() => terms.id, { onDelete: 'restrict' }),
+    obtained: integer('obtained').notNull(),
+    max: integer('max').notNull(),
+    percentTenths: integer('percent_tenths'), // percent × 10; null when max = 0
+    band: text('band'),
+    scaleName: text('scale_name'),
+    computedAt: integer('computed_at', { mode: 'timestamp_ms' }).notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({
+    uq: unique('term_finals_uq').on(t.studentId, t.classId),
+    studentIdx: index('term_finals_student_idx').on(t.studentId),
+    termIdx: index('term_finals_term_idx').on(t.termId),
+  }),
+);
+export type TermFinal = typeof termFinals.$inferSelect;
+
+/** A student's cumulative transcript — an immutable, versioned PDF built from `term_finals`
+ *  across every term/class (§4/§9). Same pipeline + rules as report cards: regenerate → N+1,
+ *  never edited/deleted; publish flips `publishedAt`; served only through the authed route. */
+export const transcripts = sqliteTable(
+  'transcripts',
+  {
+    id: text('id').primaryKey(),
+    studentId: text('student_id')
+      .notNull()
+      .references(() => students.id, { onDelete: 'restrict' }),
+    version: integer('version').notNull(),
+    pdfPath: text('pdf_path').notNull(),
+    dataJson: text('data_json', { mode: 'json' }).$type<Record<string, unknown>>(),
+    generatedByUserId: text('generated_by_user_id'),
+    generatedByName: text('generated_by_name'),
+    generatedAt: integer('generated_at', { mode: 'timestamp_ms' }).notNull(),
+    publishedAt: integer('published_at', { mode: 'timestamp_ms' }),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({
+    studentIdx: index('transcripts_student_idx').on(t.studentId),
+    versionUq: unique('transcripts_version_uq').on(t.studentId, t.version),
+  }),
+);
+export type Transcript = typeof transcripts.$inferSelect;

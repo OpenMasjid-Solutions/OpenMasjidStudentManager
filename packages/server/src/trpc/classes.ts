@@ -11,9 +11,10 @@ import { TRPCError } from '@trpc/server';
 import { eq, and, asc } from 'drizzle-orm';
 import { router, adminProcedure, teacherProcedure, auditActor } from './trpc';
 import { db } from '../db';
-import { terms, classes, classSubjects, classTeachers, enrollments, students, users, classSessions } from '../db/schema';
+import { terms, classes, classSubjects, classTeachers, enrollments, students, users, classSessions, termFinals } from '../db/schema';
 import { rid } from '../db/ids';
 import { audit } from '../audit';
+import { computeFinal } from '../grades/final';
 
 const ID = z.string().min(1).max(64);
 const NAME = z.string().trim().min(1).max(120);
@@ -37,6 +38,62 @@ export const classesRouter = router({
       audit(auditActor(ctx), 'term.create', { entity: 'term', entityId: id, detail: { name: input.name } });
       return { id };
     }),
+
+  /** Close a term: freeze each active enrollment's final grade into term_finals (recomputed on
+   *  every close), then mark the term closed. Transcripts read only these frozen finals (§4/§9). */
+  termClose: adminProcedure.input(z.object({ id: ID })).mutation(({ ctx, input }) => {
+    if (!db.select({ id: terms.id }).from(terms).where(eq(terms.id, input.id)).get()) throw new TRPCError({ code: 'NOT_FOUND', message: 'Term not found.' });
+    // Every active enrollment in ANY class of the term (archived classes included — a class that
+    // ran and finished still earns finals). Close reconciles term_finals to exactly these pairs.
+    const pairs = db
+      .select({ studentId: enrollments.studentId, classId: enrollments.classId })
+      .from(enrollments)
+      .innerJoin(classes, eq(classes.id, enrollments.classId))
+      .where(and(eq(classes.termId, input.id), eq(enrollments.status, 'active')))
+      .all();
+    const pairKeys = new Set(pairs.map((p) => `${p.studentId}|${p.classId}`));
+    const ts = now();
+    db.transaction((tx) => {
+      // Drop stale finals (a since-withdrawn or mistaken enrollment) so they don't linger on the
+      // transcript after a reopen + re-close.
+      for (const e of tx.select({ id: termFinals.id, studentId: termFinals.studentId, classId: termFinals.classId }).from(termFinals).where(eq(termFinals.termId, input.id)).all()) {
+        if (!pairKeys.has(`${e.studentId}|${e.classId}`)) tx.delete(termFinals).where(eq(termFinals.id, e.id)).run();
+      }
+      for (const p of pairs) {
+        const f = computeFinal(p.studentId, p.classId);
+        const percentTenths = f.percent !== null ? Math.round(f.percent * 10) : null;
+        const existing = tx.select({ id: termFinals.id }).from(termFinals).where(and(eq(termFinals.studentId, p.studentId), eq(termFinals.classId, p.classId))).get();
+        if (existing) {
+          tx.update(termFinals).set({ termId: input.id, obtained: f.obtained, max: f.max, percentTenths, band: f.band, scaleName: f.scaleName, computedAt: ts, updatedAt: ts }).where(eq(termFinals.id, existing.id)).run();
+        } else {
+          tx.insert(termFinals).values({ id: rid('tfn'), studentId: p.studentId, classId: p.classId, termId: input.id, obtained: f.obtained, max: f.max, percentTenths, band: f.band, scaleName: f.scaleName, computedAt: ts, createdAt: ts, updatedAt: ts }).run();
+        }
+      }
+      tx.update(terms).set({ closedAt: ts, updatedAt: ts }).where(eq(terms.id, input.id)).run();
+    });
+    audit(auditActor(ctx), 'term.close', { entity: 'term', entityId: input.id, detail: { finals: pairs.length } });
+    return { finals: pairs.length };
+  }),
+
+  /** Reopen a term so a fix can be made; the frozen finals stay until it's closed again. */
+  termReopen: adminProcedure.input(z.object({ id: ID })).mutation(({ ctx, input }) => {
+    if (!db.select({ id: terms.id }).from(terms).where(eq(terms.id, input.id)).get()) throw new TRPCError({ code: 'NOT_FOUND', message: 'Term not found.' });
+    db.update(terms).set({ closedAt: null, updatedAt: now() }).where(eq(terms.id, input.id)).run();
+    audit(auditActor(ctx), 'term.reopen', { entity: 'term', entityId: input.id });
+    return { ok: true as const };
+  }),
+
+  /** Frozen finals for a term (admin), for the close dashboard. */
+  termFinalsList: adminProcedure.input(z.object({ termId: ID })).query(({ input }) =>
+    db
+      .select({ classId: termFinals.classId, className: classes.name, studentId: termFinals.studentId, firstName: students.firstName, lastName: students.lastName, obtained: termFinals.obtained, max: termFinals.max, percentTenths: termFinals.percentTenths, band: termFinals.band })
+      .from(termFinals)
+      .innerJoin(classes, eq(classes.id, termFinals.classId))
+      .innerJoin(students, eq(students.id, termFinals.studentId))
+      .where(eq(termFinals.termId, input.termId))
+      .orderBy(asc(classes.name), asc(students.firstName))
+      .all(),
+  ),
 
   termSetCurrent: adminProcedure.input(z.object({ id: ID })).mutation(({ ctx, input }) => {
     if (!db.select({ id: terms.id }).from(terms).where(eq(terms.id, input.id)).get()) throw new TRPCError({ code: 'NOT_FOUND', message: 'Term not found.' });

@@ -7,10 +7,10 @@
  * the PDF template + generator consume this shape. Absent counts as 0 toward the total; exempt
  * is excluded from both obtained and max (standard madrasa handling).
  */
-import { and, eq, asc } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { db } from '../db';
-import { classes, terms, students, exams, examClasses, examClassSubjects, examScores, classGradeConfig, scaleBands, attendance, meritAwards, termRemarks } from '../db/schema';
-import { bandFor } from '../grades/scales';
+import { classes, terms, students, attendance, meritAwards, termRemarks } from '../db/schema';
+import { aggregateExamMarks } from '../grades/final';
 import { getSchoolName, getMeritOnReportCard } from '../settings';
 
 const CLASS_TYPE_LABEL: Record<string, string> = { maktab: 'Maktab', hifz: 'Hifz', nazrah: 'Nazrah', alim: 'ʿĀlim course', custom: 'Class' };
@@ -39,57 +39,15 @@ export function buildReportCard(studentId: string, classId: string, opts: { gene
   if (!student) throw new Error('student not found');
   const term = db.select().from(terms).where(eq(terms.id, cls.termId)).get();
 
-  // The term's exams assigned to this class, in order.
-  const ecs = db
-    .select({ ecId: examClasses.id, examId: examClasses.id, name: exams.name, examRealId: exams.id, position: exams.position, createdAt: exams.createdAt })
-    .from(examClasses)
-    .innerJoin(exams, eq(exams.id, examClasses.examId))
-    .where(and(eq(examClasses.classId, classId), eq(exams.status, 'active')))
-    .orderBy(asc(exams.position), asc(exams.createdAt))
-    .all();
-
-  const examCols = ecs.map((e) => ({ id: e.examRealId, name: e.name }));
-
-  // Subjects (union across the exams' snapshots, in first-appearance order) → rows.
-  const subjectOrder: string[] = [];
-  // Per exam: subjectId list + this student's scores keyed by subjectId.
-  const perExam = ecs.map((ec) => {
-    const subs = db.select({ id: examClassSubjects.id, name: examClassSubjects.name, maxMarks: examClassSubjects.maxMarks, position: examClassSubjects.position }).from(examClassSubjects).where(eq(examClassSubjects.examClassId, ec.ecId)).orderBy(asc(examClassSubjects.position)).all();
-    for (const s of subs) if (!subjectOrder.includes(s.name)) subjectOrder.push(s.name);
-    const scoreRows = db.select().from(examScores).where(and(eq(examScores.examClassId, ec.ecId), eq(examScores.studentId, studentId))).all();
-    const bySubjectName = new Map<string, { status: 'scored' | 'absent' | 'exempt'; value: number | null; max: number }>();
-    for (const s of subs) {
-      const sc = scoreRows.find((r) => r.subjectId === s.id);
-      if (sc) bySubjectName.set(s.name, { status: sc.status, value: sc.value, max: s.maxMarks });
-    }
-    return { bySubjectName };
-  });
-
-  const rows = subjectOrder.map((subject) => {
-    let obtained = 0;
-    let max = 0;
-    const cells = perExam.map((pe) => {
-      const cell = pe.bySubjectName.get(subject);
-      if (!cell) return { display: '—', scored: false };
-      if (cell.status === 'exempt') return { display: 'Exc', scored: false };
-      if (cell.status === 'absent') { max += cell.max; return { display: 'Abs', scored: false }; }
-      obtained += cell.value ?? 0;
-      max += cell.max;
-      return { display: String(cell.value ?? 0), scored: true };
-    });
-    return { subject, cells, obtained, max };
-  });
-
-  const totObtained = rows.reduce((a, r) => a + r.obtained, 0);
-  const totMax = rows.reduce((a, r) => a + r.max, 0);
-  const rawPercent = totMax > 0 ? (totObtained / totMax) * 100 : null; // exact — for banding
-  const percent = rawPercent !== null ? round1(rawPercent) : null; // rounded — for display
-
-  // Class scale band — from the exact ratio, so a score just under a cutoff (79.96%) isn't
-  // promoted into the higher band by display rounding.
-  const cfg = db.select().from(classGradeConfig).where(eq(classGradeConfig.classId, classId)).get();
-  const bands = cfg?.scaleId ? db.select({ label: scaleBands.label, minPercent: scaleBands.minPercent }).from(scaleBands).where(eq(scaleBands.scaleId, cfg.scaleId)).all() : [];
-  const band = rawPercent !== null ? bandFor(bands, rawPercent) : null;
+  // Marks matrix + totals + band — the single source of truth (grades/final.ts), shared with
+  // term-close's computeFinal so the report card and the frozen final never diverge.
+  const marks = aggregateExamMarks(studentId, classId);
+  const examCols = marks.exams;
+  const rows = marks.rows;
+  const totObtained = marks.obtained;
+  const totMax = marks.max;
+  const percent = marks.rawPercent !== null ? round1(marks.rawPercent) : null;
+  const band = marks.band;
 
   // Attendance summary for the class.
   const att = db.select({ status: attendance.status }).from(attendance).where(and(eq(attendance.classId, classId), eq(attendance.studentId, studentId))).all();

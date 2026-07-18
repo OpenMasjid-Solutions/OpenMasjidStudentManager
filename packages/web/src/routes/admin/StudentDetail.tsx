@@ -30,6 +30,18 @@ export function StudentDetail({ student }: { student: StudentLite }) {
   const addIncident = trpc.records.incidentAdd.useMutation();
   const setVisibility = trpc.records.incidentSetVisibility.useMutation();
 
+  const transcripts = trpc.reports.transcriptVersions.useQuery({ studentId });
+  const genTranscript = trpc.reports.transcriptGenerate.useMutation();
+  const pubTranscript = trpc.reports.transcriptSetPublish.useMutation();
+  async function generateTranscript() {
+    await genTranscript.mutateAsync({ studentId });
+    await utils.reports.transcriptVersions.invalidate({ studentId });
+  }
+  async function toggleTranscriptPublish(id: string, published: boolean) {
+    await pubTranscript.mutateAsync({ id, published });
+    await utils.reports.transcriptVersions.invalidate({ studentId });
+  }
+
   const activeDefs = (defs.data ?? []).filter((d) => !d.archivedAt);
   const [fieldEdits, setFieldEdits] = useState<Record<string, string>>({});
   useEffect(() => {
@@ -179,6 +191,38 @@ export function StudentDetail({ student }: { student: StudentLite }) {
             <button type="submit" className="btn btn--primary" disabled={addIncident.isPending}>{t('common.save')}</button>
           </form>
         )}
+      </section>
+
+      {/* Transcript (cumulative, versioned) */}
+      <section className="section glass" style={{ padding: '1rem 1.1rem' }}>
+        <div className="section-head">
+          <h2>{t('transcript.title')}</h2>
+          <span className="spacer" style={{ flex: 1 }} />
+          <button type="button" className="btn btn--primary btn--sm" onClick={generateTranscript} disabled={genTranscript.isPending}>{genTranscript.isPending ? t('reports.generating') : t('transcript.generate')}</button>
+        </div>
+        {(transcripts.data ?? []).length === 0 ? (
+          <p className="muted" style={{ fontSize: '0.9rem' }}>{t('transcript.none')}</p>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table className="data-table">
+              <thead><tr><th>{t('reports.version')}</th><th>{t('reports.generated')}</th><th>{t('reports.status')}</th><th className="actions" /></tr></thead>
+              <tbody>
+                {transcripts.data?.map((tr) => (
+                  <tr key={tr.id}>
+                    <td>v{tr.version}</td>
+                    <td>{fmtDate(tr.generatedAt as unknown as number)}</td>
+                    <td>{tr.publishedAt ? <span className="chip is-accent">{t('reports.published')}</span> : <span className="chip is-muted">{t('reports.unpublished')}</span>}</td>
+                    <td className="actions">
+                      <a className="btn btn--ghost btn--sm" href={`/reports/transcript/${tr.id}`} target="_blank" rel="noopener noreferrer">{t('reports.download')}</a>
+                      <button type="button" className="btn btn--ghost btn--sm" onClick={() => toggleTranscriptPublish(tr.id, !tr.publishedAt)} disabled={pubTranscript.isPending}>{tr.publishedAt ? t('reports.unpublishAll') : t('reports.publishAll')}</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p className="hint" style={{ marginBlockStart: '0.5rem' }}>{t('transcript.hint')}</p>
       </section>
     </div>
   );

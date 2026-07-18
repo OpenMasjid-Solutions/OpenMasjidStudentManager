@@ -12,9 +12,10 @@ import { and, eq, asc, desc } from 'drizzle-orm';
 import { router, adminProcedure, adminOrTeacherProcedure, auditActor } from './trpc';
 import { assertClassAccess } from './classAccess';
 import { db } from '../db';
-import { reportCards, enrollments, students, classes } from '../db/schema';
+import { reportCards, enrollments, students, classes, transcripts } from '../db/schema';
 import { audit } from '../audit';
 import { generateStudentCard, generateClassCards } from '../reports/generate';
+import { generateTranscript } from '../reports/transcript';
 
 const ID = z.string().min(1).max(64);
 const now = () => new Date();
@@ -80,6 +81,24 @@ export const reportsRouter = router({
     if (!card) throw new TRPCError({ code: 'NOT_FOUND', message: 'Report card not found.' });
     db.update(reportCards).set({ publishedAt: input.published ? now() : null, updatedAt: now() }).where(eq(reportCards.id, input.id)).run();
     audit(auditActor(ctx), input.published ? 'reportcard.publish' : 'reportcard.unpublish', { entity: 'class', entityId: card.classId, detail: { cardId: input.id } });
+    return { ok: true as const };
+  }),
+
+  // ── Transcripts (cumulative; admin-only, generate/read/publish) ───────────────
+  transcriptGenerate: adminProcedure.input(z.object({ studentId: ID })).mutation(async ({ ctx, input }) => {
+    if (!db.select({ id: students.id }).from(students).where(eq(students.id, input.studentId)).get()) throw new TRPCError({ code: 'NOT_FOUND', message: 'Student not found.' });
+    return generateTranscript(input.studentId, auditActor(ctx));
+  }),
+
+  transcriptVersions: adminProcedure.input(z.object({ studentId: ID })).query(({ input }) =>
+    db.select({ id: transcripts.id, version: transcripts.version, generatedAt: transcripts.generatedAt, publishedAt: transcripts.publishedAt, generatedByName: transcripts.generatedByName }).from(transcripts).where(eq(transcripts.studentId, input.studentId)).orderBy(desc(transcripts.version)).all(),
+  ),
+
+  transcriptSetPublish: adminProcedure.input(z.object({ id: ID, published: z.boolean() })).mutation(({ ctx, input }) => {
+    const tr = db.select({ id: transcripts.id, studentId: transcripts.studentId }).from(transcripts).where(eq(transcripts.id, input.id)).get();
+    if (!tr) throw new TRPCError({ code: 'NOT_FOUND', message: 'Transcript not found.' });
+    db.update(transcripts).set({ publishedAt: input.published ? now() : null, updatedAt: now() }).where(eq(transcripts.id, input.id)).run();
+    audit(auditActor(ctx), input.published ? 'transcript.publish' : 'transcript.unpublish', { entity: 'student', entityId: tr.studentId, detail: { transcriptId: input.id } });
     return { ok: true as const };
   }),
 });

@@ -15,40 +15,14 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { and, eq, asc, desc } from 'drizzle-orm';
 import { db } from '../db';
-import { config } from '../config';
 import { reportCards, enrollments, students, classes } from '../db/schema';
 import { rid } from '../db/ids';
 import { audit } from '../audit';
+import { getPdf as pdf, reportsDir, reportFilePath } from './pdf';
 import { buildReportCard, type ReportCardData } from './aggregate';
 import { reportCardDocument, combinedDocument } from './template';
 
-type Pdf = typeof import('@react-pdf/renderer');
 type Actor = { userId: string | null; role: string; name: string | null };
-
-let pdfMod: Pdf | null = null;
-let fontRegistered = false;
-
-/** The bundled Amiri font: at runtime it ships in PUBLIC_DIR/fonts; in dev it's in the web pkg. */
-function fontPath(): string {
-  if (config.publicDir) return path.join(config.publicDir, 'fonts', 'Amiri-Regular.ttf');
-  return path.resolve(process.cwd(), '..', 'web', 'public', 'fonts', 'Amiri-Regular.ttf');
-}
-
-async function pdf(): Promise<Pdf> {
-  if (!pdfMod) pdfMod = (await import('@react-pdf/renderer')) as Pdf;
-  if (!fontRegistered) {
-    pdfMod.Font.register({ family: 'Amiri', src: fontPath() });
-    pdfMod.Font.registerHyphenationCallback((word) => [word]); // no hyphenation in the marks table
-    fontRegistered = true;
-  }
-  return pdfMod;
-}
-
-function reportsDir(): string {
-  const dir = path.join(config.dataDir, 'reports');
-  fs.mkdirSync(dir, { recursive: true });
-  return dir;
-}
 
 /** Generate + store one student's report card as a new immutable version. */
 export async function generateStudentCard(studentId: string, classId: string, actor: Actor): Promise<{ id: string; version: number }> {
@@ -117,7 +91,5 @@ export async function renderClassCombined(classId: string): Promise<Buffer> {
   return p.renderToBuffer(combinedDocument(p, list));
 }
 
-/** Absolute path to a stored report-card PDF (for the authed serving route). */
-export function reportCardFilePath(filename: string): string {
-  return path.join(reportsDir(), filename);
-}
+/** Re-exported for the authed serving route (kept here for import stability). */
+export { reportFilePath as reportCardFilePath };

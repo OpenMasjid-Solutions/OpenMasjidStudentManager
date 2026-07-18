@@ -160,6 +160,12 @@
     "retry": "Try again",
     "confirmDelete": "Delete “{{title}}” and all its scores? This can’t be undone."
   },
+  "transcript": {
+    "title": "Transcript",
+    "generate": "Generate transcript",
+    "none": "No transcript generated yet.",
+    "hint": "The transcript is the student's cumulative record across all closed terms. Regenerating keeps old versions; publish makes the latest visible to parents (portal coming soon)."
+  },
   "reports": {
     "title": "Report cards",
     "generateAll": "Generate all",
@@ -236,6 +242,7 @@
     "addTerm": "Add term",
     "termName": "Term name",
     "current": "current",
+    "closed": "closed",
     "setCurrentHint": "Double-click to make this the current term",
     "addClass": "Add class",
     "className": "Class name",
@@ -257,7 +264,11 @@
     "noRoster": "No students enrolled.",
     "enroll": "Enroll",
     "unenroll": "Remove",
-    "chooseStudent": "Choose a student…"
+    "chooseStudent": "Choose a student…",
+    "closeTerm": "Close term",
+    "reopenTerm": "Reopen term",
+    "confirmClose": "Close this term? Each student's final grade will be frozen from the current exam marks. You can reopen to make changes.",
+    "closedNote": "This term is closed — final grades are frozen. Reopen to make changes."
   },
   "ctype": {
     "maktab": "Maktab",

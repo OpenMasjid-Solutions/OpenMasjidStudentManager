@@ -26,6 +26,20 @@ export function Classes() {
   const createTerm = trpc.classes.termCreate.useMutation();
   const setCurrent = trpc.classes.termSetCurrent.useMutation();
   const createClass = trpc.classes.classCreate.useMutation();
+  const closeTerm = trpc.classes.termClose.useMutation();
+  const reopenTerm = trpc.classes.termReopen.useMutation();
+
+  const selectedTermObj = (termsQ.data ?? []).find((x) => x.id === effectiveTerm) ?? null;
+  async function toggleClose() {
+    if (!selectedTermObj) return;
+    if (selectedTermObj.closedAt) {
+      await reopenTerm.mutateAsync({ id: selectedTermObj.id });
+    } else {
+      if (!window.confirm(t('classes.confirmClose'))) return;
+      await closeTerm.mutateAsync({ id: selectedTermObj.id });
+    }
+    await utils.classes.termList.invalidate();
+  }
 
   const [addTerm, setAddTerm] = useState(false);
   const [termName, setTermName] = useState('');
@@ -63,15 +77,17 @@ export function Classes() {
         <h1 className="page-title" style={{ fontSize: '1.5rem' }}>{t('nav.classes')}</h1>
         <span className="spacer" />
         <button type="button" className="btn btn--ghost" onClick={() => setAddTerm((v) => !v)}>{t('classes.addTerm')}</button>
+        {selectedTermObj && <button type="button" className="btn btn--ghost" onClick={toggleClose} disabled={closeTerm.isPending || reopenTerm.isPending}>{selectedTermObj.closedAt ? t('classes.reopenTerm') : t('classes.closeTerm')}</button>}
         {effectiveTerm && <button type="button" className="btn btn--primary" onClick={() => setAddClass((v) => !v)}>{t('classes.addClass')}</button>}
       </div>
+      {selectedTermObj?.closedAt && <p className="hint" style={{ marginBlockEnd: '0.75rem' }}>{t('classes.closedNote')}</p>}
 
       {/* Terms */}
       {(termsQ.data ?? []).length > 0 && (
         <div className="chip-row" style={{ marginBlockEnd: '1rem' }}>
           {termsQ.data?.map((tm) => (
             <button key={tm.id} type="button" className={`chip ${tm.id === effectiveTerm ? 'is-accent' : ''}`} onClick={() => setSelTerm(tm.id)} onDoubleClick={() => makeCurrent(tm.id)} title={t('classes.setCurrentHint')}>
-              {tm.name}{tm.isCurrent && ` · ${t('classes.current')}`}
+              {tm.name}{tm.isCurrent && ` · ${t('classes.current')}`}{tm.closedAt && ` · ${t('classes.closed')}`}
             </button>
           ))}
         </div>
