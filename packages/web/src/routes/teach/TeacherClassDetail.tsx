@@ -47,7 +47,7 @@ export function TeacherClassDetail({ classId }: { classId: string }) {
       <GradebookPanel classId={cls.id} />
 
       {/* Exam score entry */}
-      <ExamsPanel classId={cls.id} />
+      <ExamsPanel classId={cls.id} canPersonal />
 
       {/* Report cards (read-only for teachers) */}
       <ReportCardsPanel classId={cls.id} />

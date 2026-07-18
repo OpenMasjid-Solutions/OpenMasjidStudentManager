@@ -692,6 +692,24 @@ export const termRemarks = sqliteTable(
 );
 export type TermRemark = typeof termRemarks.$inferSelect;
 
+/** Reusable remark snippets (CLAUDE.md §4/§5) inserted into term remarks + report-card comments.
+ *  A `shared` bank is admin-managed (ownerUserId null); each teacher has a `personal` bank
+ *  (ownerUserId = their user). Teachers read shared + their own; finance/parent never. */
+export const commentSnippets = sqliteTable(
+  'comment_snippets',
+  {
+    id: text('id').primaryKey(),
+    scope: text('scope').$type<'shared' | 'personal'>().notNull(),
+    ownerUserId: text('owner_user_id').references(() => users.id, { onDelete: 'cascade' }), // null = shared
+    text: text('text').notNull(),
+    position: integer('position').notNull().default(0),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({ ownerIdx: index('comment_snippets_owner_idx').on(t.ownerUserId), scopeIdx: index('comment_snippets_scope_idx').on(t.scope) }),
+);
+export type CommentSnippet = typeof commentSnippets.$inferSelect;
+
 /** An immutable, versioned report-card PDF for a student in a class+term (§4/§9). A row is
  *  never edited or deleted — regenerating after a fix inserts version N+1; publishing flips
  *  `publishedAt` only. The PDF lives under /data/reports with a randomized filename; it is

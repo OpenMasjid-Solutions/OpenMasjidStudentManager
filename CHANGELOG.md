@@ -9,6 +9,20 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.13.0]
+
+### Added
+- **Comment bank** (§4/§5) — reusable remark snippets to speed up term-end writing. A **shared**
+  bank the office manages (admin) plus each teacher's **personal** bank; both are **inserted into
+  the term-remark field** from an "Insert snippet…" picker in the exam panel. Teachers read shared
+  + their own and manage only their own; admin manages the shared bank in **Settings → Comment
+  bank**; finance/parent never see it. 4 new tests (113 total).
+
+### Fixed (from an adversarial review of the slice)
+- The term-remark field now only saves on blur when it was actually **edited**, so blurring an
+  untouched field can't overwrite a co-teacher's meanwhile-saved remark (a last-write-wins
+  regression the controlled-draft change would otherwise have introduced).
+
 ## [0.12.0]
 
 ### Added

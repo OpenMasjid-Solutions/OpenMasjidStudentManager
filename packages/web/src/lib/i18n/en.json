@@ -314,7 +314,13 @@
     "noMeritCategories": "No merit categories yet.",
     "categoryName": "Category",
     "defaultPoints": "Default points",
-    "addCategory": "Add category"
+    "addCategory": "Add category",
+    "commentBank": "Comment bank (shared)",
+    "commentBankHint": "Reusable remark snippets all teachers can insert into term remarks and report cards.",
+    "noSnippets": "No shared snippets yet.",
+    "snippet": "Snippet",
+    "snippetHint": "e.g. Mashā’Allāh, excellent progress this term.",
+    "addSnippet": "Add snippet"
   },
   "ftype": {
     "text": "Text",
@@ -359,5 +365,12 @@
     "offline": "Server not reachable",
     "standalone": "Standalone",
     "linked": "Linked to OpenMasjidOS"
+  },
+  "comments": {
+    "insert": "Insert snippet…",
+    "mySnippets": "My snippets",
+    "noneMine": "No personal snippets yet.",
+    "addMine": "Add",
+    "addMinePlaceholder": "Save a phrase you reuse…"
   }
 }

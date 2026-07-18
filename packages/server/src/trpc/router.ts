@@ -17,6 +17,7 @@ import { meritRouter } from './merit';
 import { examsRouter } from './exams';
 import { reportsRouter } from './reports';
 import { settingsRouter } from './settings';
+import { commentsRouter } from './comments';
 import { config, fabricConfigured } from '../config';
 
 export const appRouter = router({
@@ -40,6 +41,7 @@ export const appRouter = router({
   exams: examsRouter,
   reports: reportsRouter,
   settings: settingsRouter,
+  comments: commentsRouter,
 });
 
 export type AppRouter = typeof appRouter;

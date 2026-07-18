@@ -314,7 +314,13 @@
     "noMeritCategories": "ابھی کوئی میرٹ زمرہ نہیں۔",
     "categoryName": "زمرہ",
     "defaultPoints": "ڈیفالٹ پوائنٹس",
-    "addCategory": "زمرہ شامل کریں"
+    "addCategory": "زمرہ شامل کریں",
+    "commentBank": "کمنٹ بینک (مشترک)",
+    "commentBankHint": "دوبارہ قابلِ استعمال ریمارک مقتطفات جو تمام اساتذہ ریمارکس اور رپورٹ کارڈ میں داخل کر سکتے ہیں۔",
+    "noSnippets": "ابھی کوئی مشترک مقتطف نہیں۔",
+    "snippet": "مقتطف",
+    "snippetHint": "مثلاً ما شاء اللہ، اس ٹرم میں بہترین ترقی۔",
+    "addSnippet": "مقتطف شامل کریں"
   },
   "ftype": {
     "text": "متن",
@@ -359,5 +365,12 @@
     "offline": "سرور دستیاب نہیں",
     "standalone": "خود مختار",
     "linked": "OpenMasjidOS سے منسلک"
+  },
+  "comments": {
+    "insert": "مقتطف داخل کریں…",
+    "mySnippets": "میرے مقتطفات",
+    "noneMine": "ابھی کوئی ذاتی مقتطف نہیں۔",
+    "addMine": "شامل کریں",
+    "addMinePlaceholder": "کوئی جملہ محفوظ کریں جو آپ دہراتے ہیں…"
   }
 }

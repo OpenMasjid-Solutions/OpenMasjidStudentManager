@@ -4,8 +4,9 @@
  *  mark, or "a"=absent / "e"=exempt; empty = not entered), and add a per-student term remark.
  *  A progress bar shows how much of the class is done. Per-cell autosave. Shared by the teacher
  *  and admin class windows; the server scopes access to the caller's classes. RTL-safe. */
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Trash2 } from 'lucide-react';
 import { trpc } from '../lib/trpc';
 
 type Status = 'scored' | 'absent' | 'exempt';
@@ -27,7 +28,7 @@ function cellText(cell: { status: Status; value: number | null } | undefined, t:
   return cell.status === 'absent' ? t('exams.absShort') : t('exams.excShort');
 }
 
-export function ExamsPanel({ classId }: { classId: string }) {
+export function ExamsPanel({ classId, canPersonal = false }: { classId: string; canPersonal?: boolean }) {
   const { t } = useTranslation();
   const utils = trpc.useUtils();
   const examsQ = trpc.exams.classExams.useQuery({ classId });
@@ -37,6 +38,27 @@ export function ExamsPanel({ classId }: { classId: string }) {
   const setScore = trpc.exams.setScore.useMutation();
   const setRemark = trpc.exams.setRemark.useMutation();
   const [err, setErr] = useState<string | null>(null);
+
+  // Comment bank (shared + own personal) + controlled remark drafts so snippets can be inserted.
+  const snippetsQ = trpc.comments.list.useQuery();
+  const snipCreate = trpc.comments.create.useMutation();
+  const snipRemove = trpc.comments.remove.useMutation();
+  const [remarkDraft, setRemarkDraft] = useState<Record<string, string>>({});
+  const seededClass = useRef<string>('');
+  // Which remark fields the user actually edited this session — so blurring an UNTOUCHED field
+  // never re-saves a stale draft over a co-teacher's meanwhile-saved remark (last-write-wins).
+  const remarkDirty = useRef<Set<string>>(new Set());
+  const [manageSnips, setManageSnips] = useState(false);
+  const [newSnip, setNewSnip] = useState('');
+
+  useEffect(() => {
+    if (!gridQ.data) return;
+    if (seededClass.current === classId) return; // seed once per class; don't clobber edits on refetch
+    const m: Record<string, string> = {};
+    for (const r of gridQ.data.students) m[r.studentId] = gridQ.data.remarks[r.studentId] ?? '';
+    setRemarkDraft(m);
+    seededClass.current = classId;
+  }, [gridQ.data, classId]);
 
   const refresh = () => utils.exams.grid.invalidate({ examId: activeExam!, classId });
 
@@ -62,6 +84,33 @@ export function ExamsPanel({ classId }: { classId: string }) {
     if (raw.trim() === current.trim()) return;
     await setRemark.mutateAsync({ classId, studentId, remark: raw.trim() });
     await utils.exams.grid.invalidate({ examId: activeExam!, classId });
+  }
+
+  /** Save on blur only if the field was edited (guards against clobbering a co-teacher's remark). */
+  async function blurRemark(studentId: string, value: string) {
+    if (!remarkDirty.current.has(studentId)) return;
+    await saveRemark(studentId, value, gridQ.data?.remarks[studentId] ?? '');
+    remarkDirty.current.delete(studentId);
+  }
+
+  const allSnippets = [...(snippetsQ.data?.shared ?? []).map((s) => ({ ...s, kind: 'shared' as const })), ...(snippetsQ.data?.personal ?? []).map((s) => ({ ...s, kind: 'personal' as const }))];
+
+  async function insertSnippet(studentId: string, text: string) {
+    const existing = remarkDraft[studentId] ?? '';
+    const next = existing.trim() ? `${existing.trim()} ${text}` : text;
+    setRemarkDraft((d) => ({ ...d, [studentId]: next }));
+    await saveRemark(studentId, next, existing);
+  }
+  async function addPersonalSnippet() {
+    const text = newSnip.trim();
+    if (!text) return;
+    await snipCreate.mutateAsync({ scope: 'personal', text });
+    setNewSnip('');
+    await utils.comments.list.invalidate();
+  }
+  async function removeSnippet(id: string) {
+    await snipRemove.mutateAsync({ id });
+    await utils.comments.list.invalidate();
   }
 
   if (examsQ.isLoading) return <section className="section glass" style={{ padding: '1rem 1.1rem' }}><div className="section-head"><h2>{t('exams.title')}</h2></div><p className="empty">{t('common.loading')}</p></section>;
@@ -122,20 +171,49 @@ export function ExamsPanel({ classId }: { classId: string }) {
                 </div>
               )}
 
-              {/* Term remarks */}
+              {/* Term remarks (with comment-bank snippet insert) */}
               {gridQ.data.students.length > 0 && (
                 <>
-                  <div className="section-head" style={{ marginBlockStart: '1rem' }}><h2 style={{ fontSize: '0.95rem' }}>{t('exams.remarks')}</h2></div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-                    {gridQ.data.students.map((r) => {
-                      const cur = gridQ.data!.remarks[r.studentId] ?? '';
-                      return (
-                        <div key={r.studentId} className="exam-remark-row">
-                          <span className="merit-name" style={{ flex: '0 1 9rem' }}>{r.firstName} {r.lastName}</span>
-                          <input className="input glass-inset" style={{ flex: 1 }} defaultValue={cur} key={`rmk|${r.studentId}|${cur}`} placeholder={t('exams.remarkPlaceholder')} onBlur={(e) => saveRemark(r.studentId, e.target.value, cur)} />
+                  <div className="section-head" style={{ marginBlockStart: '1rem' }}>
+                    <h2 style={{ fontSize: '0.95rem' }}>{t('exams.remarks')}</h2>
+                    <span className="spacer" style={{ flex: 1 }} />
+                    {canPersonal && <button type="button" className="btn btn--ghost btn--sm" onClick={() => setManageSnips((v) => !v)}>{t('comments.mySnippets')}</button>}
+                  </div>
+
+                  {canPersonal && manageSnips && (
+                    <div className="glass-inset" style={{ padding: '0.6rem 0.8rem', borderRadius: 'var(--radius-button)', marginBlockEnd: '0.6rem' }}>
+                      {(snippetsQ.data?.personal ?? []).length === 0 ? (
+                        <p className="muted" style={{ fontSize: '0.85rem' }}>{t('comments.noneMine')}</p>
+                      ) : (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+                          {snippetsQ.data?.personal.map((s) => (
+                            <div key={s.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                              <span style={{ flex: 1, fontSize: '0.88rem' }}>{s.text}</span>
+                              <button type="button" className="link-btn" aria-label={t('common.delete')} onClick={() => removeSnippet(s.id)}><Trash2 size={13} /></button>
+                            </div>
+                          ))}
                         </div>
-                      );
-                    })}
+                      )}
+                      <div className="inline-form" style={{ padding: 0, marginBlockStart: '0.5rem' }}>
+                        <div className="field" style={{ flex: '1 1 100%' }}><input className="input glass-inset" value={newSnip} onChange={(e) => setNewSnip(e.target.value)} placeholder={t('comments.addMinePlaceholder')} /></div>
+                        <button type="button" className="btn btn--primary btn--sm" onClick={addPersonalSnippet} disabled={snipCreate.isPending || !newSnip.trim()}>{t('comments.addMine')}</button>
+                      </div>
+                    </div>
+                  )}
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                    {gridQ.data.students.map((r) => (
+                      <div key={r.studentId} className="exam-remark-row">
+                        <span className="merit-name" style={{ flex: '0 1 9rem' }}>{r.firstName} {r.lastName}</span>
+                        <input className="input glass-inset" style={{ flex: 1 }} value={remarkDraft[r.studentId] ?? ''} placeholder={t('exams.remarkPlaceholder')} onChange={(e) => { remarkDirty.current.add(r.studentId); setRemarkDraft((d) => ({ ...d, [r.studentId]: e.target.value })); }} onBlur={(e) => blurRemark(r.studentId, e.target.value)} />
+                        {allSnippets.length > 0 && (
+                          <select className="input glass-inset" style={{ flex: '0 1 9rem' }} value="" onChange={(e) => { if (e.target.value) void insertSnippet(r.studentId, e.target.value); e.currentTarget.selectedIndex = 0; }}>
+                            <option value="">{t('comments.insert')}</option>
+                            {allSnippets.map((s) => <option key={s.id} value={s.text}>{s.text.length > 40 ? s.text.slice(0, 40) + '…' : s.text}</option>)}
+                          </select>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 </>
               )}

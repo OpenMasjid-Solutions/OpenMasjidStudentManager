@@ -314,7 +314,13 @@
     "noMeritCategories": "لا توجد فئات جدارة بعد.",
     "categoryName": "الفئة",
     "defaultPoints": "النقاط الافتراضية",
-    "addCategory": "إضافة فئة"
+    "addCategory": "إضافة فئة",
+    "commentBank": "بنك التعليقات (مشترك)",
+    "commentBankHint": "مقتطفات ملاحظات قابلة لإعادة الاستخدام يُدرجها كل المعلمين في الملاحظات وبطاقات التقرير.",
+    "noSnippets": "لا توجد مقتطفات مشتركة بعد.",
+    "snippet": "مقتطف",
+    "snippetHint": "مثل: ما شاء الله، تقدّم ممتاز هذا الفصل.",
+    "addSnippet": "إضافة مقتطف"
   },
   "ftype": {
     "text": "نص",
@@ -359,5 +365,12 @@
     "offline": "الخادم غير متاح",
     "standalone": "مستقل",
     "linked": "مرتبط بـ OpenMasjidOS"
+  },
+  "comments": {
+    "insert": "إدراج مقتطف…",
+    "mySnippets": "مقتطفاتي",
+    "noneMine": "لا توجد مقتطفات شخصية بعد.",
+    "addMine": "إضافة",
+    "addMinePlaceholder": "احفظ عبارة تكررها…"
   }
 }

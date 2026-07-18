@@ -34,6 +34,23 @@ export function Settings() {
     await utils.settings.get.invalidate();
   }
 
+  // Shared comment bank
+  const snippets = trpc.comments.list.useQuery();
+  const snipCreate = trpc.comments.create.useMutation();
+  const snipRemove = trpc.comments.remove.useMutation();
+  const [newSnippet, setNewSnippet] = useState('');
+  async function addSharedSnippet(e: FormEvent) {
+    e.preventDefault();
+    if (!newSnippet.trim()) return;
+    await snipCreate.mutateAsync({ scope: 'shared', text: newSnippet.trim() });
+    setNewSnippet('');
+    await utils.comments.list.invalidate();
+  }
+  async function removeSharedSnippet(id: string) {
+    await snipRemove.mutateAsync({ id });
+    await utils.comments.list.invalidate();
+  }
+
   // Merit categories
   const meritCats = trpc.merit.categoryList.useQuery();
   const meritCreate = trpc.merit.categoryCreate.useMutation();
@@ -178,6 +195,28 @@ export function Settings() {
           <div className="field"><label className="label">{t('settings.categoryName')}</label><input className="input glass-inset" value={mc.name} onChange={(e) => setMc({ ...mc, name: e.target.value })} /></div>
           <div className="field" style={{ flex: '0 1 7rem' }}><label className="label">{t('settings.defaultPoints')}</label><input type="number" className="input glass-inset" value={mc.points} onChange={(e) => setMc({ ...mc, points: e.target.value })} /></div>
           <button type="submit" className="btn btn--primary" disabled={meritCreate.isPending}>{t('settings.addCategory')}</button>
+        </form>
+      </section>
+
+      {/* Shared comment bank */}
+      <section className="section glass" style={{ padding: '1rem 1.1rem' }}>
+        <div className="section-head"><h2>{t('settings.commentBank')}</h2></div>
+        <p className="muted" style={{ fontSize: '0.88rem', marginBlockEnd: '0.75rem' }}>{t('settings.commentBankHint')}</p>
+        {(snippets.data?.shared ?? []).length === 0 ? (
+          <p className="muted" style={{ fontSize: '0.9rem' }}>{t('settings.noSnippets')}</p>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+            {snippets.data?.shared.map((s) => (
+              <div key={s.id} className="glass-inset" style={{ padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-button)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ flex: 1 }}>{s.text}</span>
+                <button type="button" className="btn btn--ghost btn--sm" onClick={() => removeSharedSnippet(s.id)} disabled={snipRemove.isPending}>{t('settings.archive')}</button>
+              </div>
+            ))}
+          </div>
+        )}
+        <form className="inline-form glass-inset" onSubmit={addSharedSnippet}>
+          <div className="field" style={{ flex: '1 1 100%' }}><label className="label">{t('settings.snippet')}</label><input className="input glass-inset" value={newSnippet} onChange={(e) => setNewSnippet(e.target.value)} placeholder={t('settings.snippetHint')} /></div>
+          <button type="submit" className="btn btn--primary" disabled={snipCreate.isPending}>{t('settings.addSnippet')}</button>
         </form>
       </section>
     </motion.div>
