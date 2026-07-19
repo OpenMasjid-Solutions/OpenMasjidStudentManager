@@ -9,6 +9,25 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.21.0]
+
+### Added
+- **Public admissions form** (§4/§14) — a families' **enquiry form served over the tunnel with no
+  login** at `/apply`: guardian name + contact, child name + DOB, and program interest. It's the
+  app's most hostile surface, so it's locked down: strict zod with hard length caps (oversized input
+  rejected generically — no field or data leak), a **honeypot** field (bots that fill it get a
+  success response but nothing is stored), **per-IP burst + daily rate limits** keyed on the real
+  client IP, no file uploads, and submissions stored as **inert** data that can only ever create one
+  `enquiry` row (never pre-enrolled). New public submissions land in the staff pipeline flagged
+  "from website." i18n en/ar/ur. 5 hostile-input tests (162 total); browser-verified end to end.
+
+### Fixed (from an adversarial review of the slice)
+- The in-process rate-limiter maps are now **hard-bounded** (evict oldest-first) instead of only
+  pruning expired entries above a soft threshold — so a distributed flood (or IPv6-prefix rotation)
+  of distinct IPs can't grow the map unbounded or force an O(n) scan on every request. Removes the
+  per-request full-scan hot path entirely; applied to both the login and submission limiters. 2 more
+  tests (164 total).
+
 ## [0.20.0]
 
 ### Added

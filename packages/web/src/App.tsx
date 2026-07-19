@@ -21,6 +21,7 @@ import { TeachApp } from './routes/teach/TeachApp';
 import { FinanceApp } from './routes/finance/FinanceApp';
 import { FamilyApp } from './routes/family/FamilyApp';
 import { InviteAccept } from './routes/InviteAccept';
+import { ApplyForm } from './routes/apply/ApplyForm';
 import { trpc } from './lib/trpc';
 
 function SetupOnLanNotice() {
@@ -58,6 +59,16 @@ export function App() {
   // Anonymous portal entry points reached via the emailed invite link / statement QR. These take
   // precedence over the session gate (a parent sets a password here before they have an account).
   const path = typeof window !== 'undefined' ? window.location.pathname : '/';
+  // The public admissions enquiry form — anonymous, over the tunnel (§4/§14).
+  if (path === '/apply') {
+    return (
+      <>
+        <SceneBackground />
+        <ShellControls />
+        <div className="auth-wrap"><ApplyForm /></div>
+      </>
+    );
+  }
   if (path === '/family/invite' || path === '/family/register') {
     const token = path === '/family/invite' ? new URLSearchParams(window.location.search).get('token') : null;
     let card: React.ReactNode;

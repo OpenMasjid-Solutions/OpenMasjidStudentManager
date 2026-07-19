@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 OpenMasjid-Solutions
 import { describe, it, expect } from 'vitest';
-import { LoginLimiter } from './rateLimit';
+import { LoginLimiter, SubmitLimiter } from './rateLimit';
 
 describe('LoginLimiter', () => {
   it('allows attempts until the failure threshold, then blocks', () => {
@@ -39,5 +39,25 @@ describe('LoginLimiter', () => {
     l.fail('attacker', now);
     expect(l.retryAfterMs('attacker', now)).toBeGreaterThan(0);
     expect(l.retryAfterMs('victim', now)).toBe(0);
+  });
+});
+
+describe('SubmitLimiter', () => {
+  it('caps submissions per key within the window', () => {
+    const l = new SubmitLimiter(2, 60_000);
+    const now = 1_000_000;
+    expect(l.allow('ip', now)).toBe(true);
+    expect(l.allow('ip', now)).toBe(true);
+    expect(l.allow('ip', now)).toBe(false); // 3rd in-window blocked
+    expect(l.allow('ip', now + 60_001)).toBe(true); // new window
+  });
+
+  it('bounds its map under a flood of distinct keys (evicts oldest, forgiving that counter)', () => {
+    const l = new SubmitLimiter(1, 3_600_000); // 1/hour so nothing expires during the test
+    expect(l.allow('k0')).toBe(true);
+    expect(l.allow('k0')).toBe(false); // k0 is now at its cap
+    // Flood past the 50k hard cap — k0 is the oldest entry, so it gets evicted.
+    for (let i = 0; i < 50_200; i++) l.allow('flood-' + i);
+    expect(l.allow('k0')).toBe(true); // evicted → fresh bucket (memory stayed bounded)
   });
 });

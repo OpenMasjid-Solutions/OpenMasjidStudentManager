@@ -14,7 +14,8 @@ export default defineConfig({
       '/trpc': { target: 'http://localhost:8080', changeOrigin: true },
       '/api': { target: 'http://localhost:8080', changeOrigin: true },
       '/fabric': { target: 'http://localhost:8080', changeOrigin: true },
-      '/apply': { target: 'http://localhost:8080', changeOrigin: true },
+      // POST /apply → the server route; GET /apply is the SPA page, so let it fall through to Vite.
+      '/apply': { target: 'http://localhost:8080', changeOrigin: true, bypass: (req) => (req.method === 'GET' ? '/index.html' : undefined) },
       '/reports': { target: 'http://localhost:8080', changeOrigin: true },
       '/statements': { target: 'http://localhost:8080', changeOrigin: true },
     },

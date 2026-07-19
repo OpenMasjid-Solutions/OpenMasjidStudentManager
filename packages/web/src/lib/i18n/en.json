@@ -517,5 +517,21 @@
     "st_declined": "Declined",
     "st_enrolled": "Enrolled",
     "enrolledInvoicePending": "Enrolled — the student’s PIN is {{pin}}. The first invoice couldn’t be generated; create it in Billing."
+  },
+  "apply": {
+    "title": "Admission enquiry",
+    "subtitle": "Tell us about your child — the office will be in touch.",
+    "guardianName": "Your name",
+    "phone": "Phone",
+    "email": "Email",
+    "childFirst": "Child’s first name",
+    "childLast": "Child’s last name",
+    "dob": "Child’s date of birth",
+    "program": "Program of interest",
+    "programHint": "e.g. Maktab, Hifz, Nazrah",
+    "submit": "Submit enquiry",
+    "error": "Something went wrong. Please try again in a moment.",
+    "thanksTitle": "Thank you",
+    "thanksBody": "We’ve received your enquiry. The office will be in touch soon, in shā’ Allāh."
   }
 }

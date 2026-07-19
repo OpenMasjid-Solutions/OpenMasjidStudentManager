@@ -23,11 +23,14 @@ import { appRouter, type AppRouter } from './trpc/router';
 import { createContext } from './trpc/trpc';
 import { registerReportRoutes } from './reports/routes';
 import { registerStatementRoutes } from './billing/statementRoutes';
+import { registerApplyRoute } from './admissions/apply';
 
 const log = makeLog('main');
 
-// Paths served/handled outside the SPA (the web app is a client-side router).
-const NON_SPA_PREFIXES = ['/trpc', '/api', '/fabric', '/apply', '/reports', '/statements', '/healthz'];
+// Paths served/handled outside the SPA (the web app is a client-side router). NOTE: /apply is
+// deliberately NOT here — POST /apply is the public form's Fastify route, but GET /apply must fall
+// through to the SPA (the anonymous enquiry page); the POST route is matched before the fallback.
+const NON_SPA_PREFIXES = ['/trpc', '/api', '/fabric', '/reports', '/statements', '/healthz'];
 
 async function main(): Promise<void> {
   // Apply committed migrations before accepting traffic, then clear stale sessions.
@@ -73,6 +76,9 @@ async function main(): Promise<void> {
 
   // Authed printable family statements (admin LAN-only / finance LAN+tunnel; §5, §14).
   registerStatementRoutes(app);
+
+  // Anonymous public admissions form (§4, §14): its own zod + honeypot + rate-limit gates.
+  registerApplyRoute(app);
 
   // Production: serve the built web UI + SPA fallback. In dev, Vite serves the UI
   // (config.publicDir is empty), so this whole block is skipped.
