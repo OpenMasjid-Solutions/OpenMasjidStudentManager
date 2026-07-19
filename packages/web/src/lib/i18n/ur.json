@@ -477,6 +477,8 @@
     "att_present": "حاضر",
     "att_absent": "غیر حاضر",
     "att_late": "تاخیر",
-    "att_excused": "بعذر"
+    "att_excused": "بعذر",
+    "schedule": "ہفتہ وار شیڈول",
+    "noSchedule": "ابھی کوئی کلاس شیڈول نہیں۔"
   }
 }

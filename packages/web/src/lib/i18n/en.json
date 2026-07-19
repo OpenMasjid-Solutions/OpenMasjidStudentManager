@@ -477,6 +477,8 @@
     "att_present": "Present",
     "att_absent": "Absent",
     "att_late": "Late",
-    "att_excused": "Excused"
+    "att_excused": "Excused",
+    "schedule": "Weekly schedule",
+    "noSchedule": "No sessions scheduled yet."
   }
 }

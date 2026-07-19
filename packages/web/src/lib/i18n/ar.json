@@ -477,6 +477,8 @@
     "att_present": "حاضر",
     "att_absent": "غائب",
     "att_late": "متأخر",
-    "att_excused": "بعذر"
+    "att_excused": "بعذر",
+    "schedule": "الجدول الأسبوعي",
+    "noSchedule": "لا توجد حصص مجدولة بعد."
   }
 }

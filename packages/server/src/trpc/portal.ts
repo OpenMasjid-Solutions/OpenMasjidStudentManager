@@ -11,7 +11,7 @@ import { z } from 'zod';
 import { and, eq, asc, desc, inArray } from 'drizzle-orm';
 import { router, parentProcedure } from './trpc';
 import { db } from '../db';
-import { families, students, invoices, payments, reportCards, transcripts, classes, enrollments, gradeItems, grades, attendance, meritAwards, meritCategories } from '../db/schema';
+import { families, students, invoices, payments, reportCards, transcripts, classes, classSessions, enrollments, gradeItems, grades, attendance, meritAwards, meritCategories } from '../db/schema';
 import { familyBalance, invoiceTotal, invoicePaid } from '../billing/ledger';
 import { getCurrency } from '../settings';
 import { parentFamilyIds, parentStudentIds, assertStudentAccess } from './familyAccess';
@@ -147,7 +147,34 @@ export const portalRouter = router({
     const history = awards.map((a) => ({ points: a.points, category: catNames.get(a.categoryId) ?? '—', note: a.note, at: a.at }));
     return { total, history };
   }),
+
+  /** One of the parent's kids: their weekly timetable (sessions across all enrolled classes). */
+  childSchedule: parentProcedure.input(STUDENT).query(({ ctx, input }) => {
+    assertStudentAccess(ctx, input.studentId);
+    const classIds = db.select({ classId: enrollments.classId }).from(enrollments).where(and(eq(enrollments.studentId, input.studentId), eq(enrollments.status, 'active'))).all().map((r) => r.classId);
+    if (!classIds.length) return { sessions: [] as ScheduleSession[] };
+    const sessions = db
+      .select({ id: classSessions.id, classId: classSessions.classId, className: classes.name, classType: classes.type, customLabel: classes.customLabel, dayOfWeek: classSessions.dayOfWeek, startMin: classSessions.startMin, endMin: classSessions.endMin, room: classSessions.room })
+      .from(classSessions)
+      .innerJoin(classes, eq(classes.id, classSessions.classId))
+      .where(inArray(classSessions.classId, classIds))
+      .orderBy(asc(classSessions.dayOfWeek), asc(classSessions.startMin))
+      .all();
+    return { sessions };
+  }),
 });
+
+type ScheduleSession = {
+  id: string;
+  classId: string;
+  className: string;
+  classType: 'maktab' | 'hifz' | 'nazrah' | 'alim' | 'custom';
+  customLabel: string | null;
+  dayOfWeek: number;
+  startMin: number;
+  endMin: number;
+  room: string | null;
+};
 
 type ReportChild = {
   studentId: string;

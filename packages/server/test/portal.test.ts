@@ -242,4 +242,17 @@ describe('portal per-child academics (grades / attendance / merit)', () => {
     await expect(parent.portal.childAttendance({ studentId: sB })).rejects.toMatchObject({ code: 'FORBIDDEN' });
     await expect(parent.portal.childMerit({ studentId: sB })).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
+
+  it('childSchedule returns the kid’s weekly sessions and refuses another family’s kid', async () => {
+    const { admin, gA, sA, sB, cls } = await scenario();
+    const { db } = app.dbmod;
+    const ts = new Date();
+    db.insert(classSessions).values({ id: 'cs_1', classId: cls, dayOfWeek: 6, startMin: 540, endMin: 600, room: 'Room 1', createdAt: ts, updatedAt: ts }).run();
+    const uid = await acceptInvite(admin, gA);
+    const parent = caller('parent', { userId: uid });
+    const s = await parent.portal.childSchedule({ studentId: sA });
+    expect(s.sessions).toHaveLength(1);
+    expect(s.sessions[0]).toMatchObject({ dayOfWeek: 6, startMin: 540, endMin: 600, room: 'Room 1', className: 'Maktab A', classType: 'maktab' });
+    await expect(parent.portal.childSchedule({ studentId: sB })).rejects.toMatchObject({ code: 'FORBIDDEN' });
+  });
 });

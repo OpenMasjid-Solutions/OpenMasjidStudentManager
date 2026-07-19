@@ -6,6 +6,7 @@ import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { ChevronLeft } from 'lucide-react';
 import { staggerContainer, staggerItem } from '../../lib/motion';
+import { WeekGrid } from '../../components/WeekGrid';
 import { trpc } from '../../lib/trpc';
 
 export function ChildDetail({ studentId, name, onBack }: { studentId: string; name: string; onBack: () => void }) {
@@ -13,6 +14,7 @@ export function ChildDetail({ studentId, name, onBack }: { studentId: string; na
   const gradesQ = trpc.portal.childGrades.useQuery({ studentId });
   const attQ = trpc.portal.childAttendance.useQuery({ studentId });
   const meritQ = trpc.portal.childMerit.useQuery({ studentId });
+  const schedQ = trpc.portal.childSchedule.useQuery({ studentId });
   const fmtDate = (v: unknown) => new Date(v as number).toLocaleDateString();
   const score = (pts: number | null, max: number) => (pts == null ? '—' : `${pts} / ${max}`);
   // A transient failure must not masquerade as "no records" (parent portal = the face of the madrasa).
@@ -25,6 +27,12 @@ export function ChildDetail({ studentId, name, onBack }: { studentId: string; na
         <ChevronLeft size={16} /> {t('family.back')}
       </button>
       <div className="fam-hello"><h1>{name}</h1></div>
+
+      {/* Weekly schedule */}
+      <motion.section className="fam-section" variants={staggerItem}>
+        <h2>{t('family.schedule')}</h2>
+        {state(schedQ) !== 'ok' ? <Placeholder s={state(schedQ) as 'loading' | 'error'} /> : <WeekGrid sessions={schedQ.data!.sessions} emptyText={t('family.noSchedule')} />}
+      </motion.section>
 
       {/* Merit */}
       <motion.section className="fam-section" variants={staggerItem}>

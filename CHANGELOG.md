@@ -9,6 +9,18 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.19.0]
+
+### Added
+- **Each child's weekly schedule in the parent portal** (§4/§15) — the child page now opens with a
+  week-at-a-glance timetable (day cards with time, class, type, and room) built from the class
+  sessions across all the child's enrolled classes. New parent-scoped `portal.childSchedule` (gated
+  by `assertStudentAccess` — own kids only), rendering through the shared `WeekGrid` so it matches
+  the staff timetable and collapses cleanly to one column on a phone. i18n en/ar/ur. 1 new test
+  (152 total); browser-verified. This completes the parent portal's read surface (schedule, grades,
+  attendance, merit, report cards & transcripts, balance & payments). A clean adversarial review
+  found nothing.
+
 ## [0.18.0]
 
 ### Added
