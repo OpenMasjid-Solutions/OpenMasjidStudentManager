@@ -9,6 +9,28 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.26.0]
+
+### Added
+- **Stripe reconciliation — the payments safety net** (§11.4). A daily job (07:00) plus an on-demand
+  **"Reconcile now"** button on the finance Billing page list every succeeded tuition PaymentIntent
+  (`metadata.purpose == "students-billing"`) since a stored cursor and record any the ledger is
+  missing — flagged `via: reconciliation`. This recovers **both** a missed Donations/Kiosk broker call
+  **and** a missed webhook for our own portal/autopay intents, so **money is never lost, only delayed**.
+  Recording goes through the one idempotent ledger path (keyed on the PaymentIntent id), so a
+  reconcile that overlaps a late webhook, or a re-run over the same window, is a harmless no-op.
+  Recovering an autopay charge also resolves its stuck-`pending` run and resets the retry ladder.
+
+### Security / correctness (hardening from the step-17 adversarial review)
+- **The cursor never advances past a PI that failed to record.** A transient write error on one PI
+  (e.g. a family row not yet present) now holds the cursor strictly below that PaymentIntent so the
+  next run retries it — a payment collected in Stripe can never be silently skipped. Truly
+  unattributable PIs (missing family / unknown origin) are logged for manual handling and don't wedge
+  the scan.
+- **A stuck-`pending` autopay run is healed even when its payment was already recorded** — reconcile
+  now mirrors the webhook and resolves the run unconditionally, so a crash between the ledger write
+  and the run update can't leave a family's autopay silently blocked forever.
+
 ## [0.25.0]
 
 ### Added

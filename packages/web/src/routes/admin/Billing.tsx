@@ -23,10 +23,13 @@ export function Billing() {
   const planCreate = trpc.billing.feePlanCreate.useMutation();
   const planArchive = trpc.billing.feePlanArchive.useMutation();
   const genPeriod = trpc.billing.generatePeriod.useMutation();
+  const reconcileStatusQ = trpc.billing.reconcileStatus.useQuery();
+  const reconcileNow = trpc.billing.reconcileNow.useMutation();
 
   const [plan, setPlan] = useState({ name: '', amount: '', cadence: 'monthly' });
   const [gen, setGen] = useState({ periodKey: '', label: '', dueDate: '' });
   const [genMsg, setGenMsg] = useState<string | null>(null);
+  const [reconcileMsg, setReconcileMsg] = useState<string | null>(null);
   const money = (c: number) => formatMoney(c, currency);
 
   async function addPlan(e: FormEvent) {
@@ -47,6 +50,12 @@ export function Billing() {
   }
   function openFamily(id: string, name: string) {
     open({ title: name, wide: true, dedupeKey: `billing:${id}`, icon: <Wallet size={15} />, node: <FamilyBilling familyId={id} currency={currency} /> });
+  }
+  async function runReconcile() {
+    const r = await reconcileNow.mutateAsync();
+    setReconcileMsg(r.ok ? t('billing.reconcileDone', { scanned: r.scanned, recorded: r.recorded }) : t('billing.reconcileUnavailable'));
+    await utils.billing.reconcileStatus.invalidate();
+    await utils.billing.familiesOverview.invalidate();
   }
 
   return (
@@ -90,6 +99,21 @@ export function Billing() {
           <div className="field" style={{ flex: '0 1 10rem' }}><label className="label">{t('billing.due')}</label><input type="date" className="input glass-inset" value={gen.dueDate} onChange={(e) => setGen({ ...gen, dueDate: e.target.value })} /></div>
           <button type="submit" className="btn btn--primary" disabled={genPeriod.isPending}>{t('billing.generateAll')}</button>
         </form>
+      </section>
+
+      {/* Payment sync — Stripe reconciliation (§11.4): recover any card payment a webhook/broker call missed. */}
+      <section className="section glass" style={{ padding: '1rem 1.1rem' }}>
+        <div className="section-head"><h2>{t('billing.paymentsSync')}</h2></div>
+        <p className="muted" style={{ fontSize: '0.88rem', marginBlockEnd: '0.6rem' }}>{t('billing.reconcileHint')}</p>
+        {reconcileMsg && <div className="notice notice--warn" style={{ marginBlockEnd: '0.6rem' }}>{reconcileMsg}</div>}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap' }}>
+          <button type="button" className="btn btn--primary" disabled={reconcileNow.isPending} onClick={runReconcile}>
+            {reconcileNow.isPending ? t('billing.reconciling') : t('billing.reconcileNow')}
+          </button>
+          {reconcileStatusQ.data && (
+            <span className="muted" style={{ fontSize: '0.85rem' }}>{t('billing.reconcileLast', { when: new Date(reconcileStatusQ.data.ranAt).toLocaleString(), recorded: reconcileStatusQ.data.recorded })}</span>
+          )}
+        </div>
       </section>
 
       {/* Families with balances */}

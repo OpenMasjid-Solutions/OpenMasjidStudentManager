@@ -14,6 +14,8 @@ export const SETTING_KEYS = {
   currency: 'currency',
   meritOnReportCard: 'merit_on_report_card',
   externalPayments: 'external_payments', // Donations/Kiosk tuition campaign on/off (§11.2 info.enabled)
+  reconcileCursor: 'stripe_reconcile_cursor', // unix seconds — last reconciled PI created-time (§11.4)
+  reconcileLast: 'stripe_reconcile_last', // JSON summary of the last reconcile run (for the finance UI)
 } as const;
 
 export function getSetting(key: string): string | null {

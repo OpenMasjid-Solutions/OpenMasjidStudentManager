@@ -16,6 +16,7 @@ import { rid } from '../db/ids';
 import { audit } from '../audit';
 import { recordPayment, reversePayment, familyBalance, invoiceTotal, invoicePaid } from '../billing/ledger';
 import { generateForFamily, generateForPeriod } from '../billing/invoices';
+import { reconcile, reconcileStatus } from '../payments/reconcile';
 import { getCurrency } from '../settings';
 
 const ID = z.string().min(1).max(64);
@@ -140,6 +141,15 @@ export const billingRouter = router({
     if (!p) throw new TRPCError({ code: 'NOT_FOUND', message: 'Payment not found.' });
     const r = reversePayment(input.paymentId, auditActor(ctx));
     audit(auditActor(ctx), 'payment.reverse', { entity: 'family', entityId: p.familyId, detail: { paymentId: input.paymentId } });
+    return r;
+  }),
+
+  // Stripe reconciliation (§11.4): the safety net for missed broker calls / webhooks. The last-run
+  // summary drives the finance UI; "Reconcile now" runs a pass on demand (the scheduler runs daily).
+  reconcileStatus: adminOrFinanceProcedure.query(() => reconcileStatus()),
+  reconcileNow: adminOrFinanceProcedure.mutation(async ({ ctx }) => {
+    const r = await reconcile(auditActor(ctx));
+    audit(auditActor(ctx), 'payment.reconcile.run', { detail: { ok: r.ok, scanned: r.scanned, recorded: r.recorded } });
     return r;
   }),
 });
