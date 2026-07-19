@@ -42,7 +42,9 @@
     "loading": "جارٍ التحميل…",
     "close": "إغلاق",
     "delete": "حذف",
-    "copy": "نسخ"
+    "copy": "نسخ",
+    "add": "إضافة",
+    "remove": "إزالة"
   },
   "directory": {
     "title": "الدليل",
@@ -90,7 +92,8 @@
     "myWeek": "أسبوعي",
     "myClasses": "صفوفي",
     "primary": "التنقل الرئيسي",
-    "billing": "الفوترة"
+    "billing": "الفوترة",
+    "admissions": "القبول"
   },
   "days": {
     "0": "الأحد",
@@ -480,5 +483,39 @@
     "att_excused": "بعذر",
     "schedule": "الجدول الأسبوعي",
     "noSchedule": "لا توجد حصص مجدولة بعد."
+  },
+  "admissions": {
+    "addApplicant": "إضافة متقدم",
+    "newEnquiry": "استفسار جديد",
+    "guardianName": "اسم ولي الأمر",
+    "phone": "الهاتف",
+    "email": "البريد الإلكتروني",
+    "childFirst": "الاسم الأول للطفل",
+    "childLast": "اسم عائلة الطفل",
+    "dob": "تاريخ الميلاد",
+    "program": "البرنامج المطلوب",
+    "all": "الكل",
+    "none": "لا يوجد متقدمون بعد.",
+    "fromPublic": "من الموقع",
+    "notes": "ملاحظات",
+    "addNote": "إضافة ملاحظة…",
+    "noNotes": "لا توجد ملاحظات بعد.",
+    "enroll": "تسجيل",
+    "enrollNow": "تسجيل الآن",
+    "confirmRemove": "إزالة هذا المتقدم؟",
+    "class": "الصف",
+    "feePlan": "خطة الرسوم",
+    "noFee": "بدون رسوم",
+    "genFirstInvoice": "إنشاء أول فاتورة",
+    "pickClass": "اختر صفاً.",
+    "invoiceNeedsFee": "اختر خطة رسوم واملأ تفاصيل الفاتورة.",
+    "enrolledOk": "تم التسجيل — رمز الطالب هو {{pin}}.",
+    "st_enquiry": "استفسار",
+    "st_application": "طلب",
+    "st_accepted": "مقبول",
+    "st_waitlisted": "قائمة انتظار",
+    "st_declined": "مرفوض",
+    "st_enrolled": "مسجَّل",
+    "enrolledInvoicePending": "تم التسجيل — رمز الطالب هو {{pin}}. تعذّر إنشاء أول فاتورة؛ أنشئها من الفوترة."
   }
 }

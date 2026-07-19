@@ -13,6 +13,7 @@ import { Directory } from './Directory';
 import { Classes } from './Classes';
 import { Timetable } from './Timetable';
 import { Exams } from './Exams';
+import { Admissions } from './Admissions';
 import { Billing } from './Billing';
 import { Staff } from './Staff';
 import { Settings } from './Settings';
@@ -35,6 +36,8 @@ export function AdminApp() {
           <Timetable />
         ) : section === 'exams' ? (
           <Exams />
+        ) : section === 'admissions' ? (
+          <Admissions />
         ) : section === 'billing' ? (
           <Billing />
         ) : section === 'staff' ? (

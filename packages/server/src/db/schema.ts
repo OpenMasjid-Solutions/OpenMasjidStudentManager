@@ -948,3 +948,47 @@ export const transcripts = sqliteTable(
   }),
 );
 export type Transcript = typeof transcripts.$inferSelect;
+
+// ── Admissions (step 12) ─────────────────────────────────────────────────────
+
+export type AdmissionStatus = 'enquiry' | 'application' | 'accepted' | 'waitlisted' | 'declined' | 'enrolled';
+
+/** Admissions pipeline (§4/§14). Rows come from staff OR the anonymous public /apply form
+ *  (source='public') — so every field is HOSTILE input: stored as inert text and rendered ONLY as
+ *  text, never HTML. `fieldsJson` holds admin-selected custom-field answers. One-click enroll stamps
+ *  the created family/student ids here and flips status to 'enrolled'. */
+export const admissions = sqliteTable(
+  'admissions',
+  {
+    id: text('id').primaryKey(),
+    status: text('status').$type<AdmissionStatus>().notNull().default('enquiry'),
+    source: text('source').$type<'public' | 'manual'>().notNull().default('manual'),
+    guardianName: text('guardian_name').notNull(),
+    guardianPhone: text('guardian_phone'),
+    guardianEmail: text('guardian_email'),
+    childFirstName: text('child_first_name').notNull(),
+    childLastName: text('child_last_name').notNull(),
+    childDob: text('child_dob'), // ISO date, optional
+    programInterest: text('program_interest'), // free text / class-type interest
+    fieldsJson: text('fields_json', { mode: 'json' }).$type<Record<string, string>>(),
+    createdFamilyId: text('created_family_id'),
+    createdStudentId: text('created_student_id'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({ statusIdx: index('admissions_status_idx').on(t.status), atIdx: index('admissions_at_idx').on(t.createdAt) }),
+);
+export type Admission = typeof admissions.$inferSelect;
+
+/** Staff notes on an applicant (§4). */
+export const admissionNotes = sqliteTable('admission_notes', {
+  id: text('id').primaryKey(),
+  admissionId: text('admission_id')
+    .notNull()
+    .references(() => admissions.id, { onDelete: 'cascade' }),
+  note: text('note').notNull(),
+  byUserId: text('by_user_id'),
+  byName: text('by_name'),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+});
+export type AdmissionNote = typeof admissionNotes.$inferSelect;

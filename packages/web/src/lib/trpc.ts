@@ -6,10 +6,14 @@
  */
 import { createTRPCReact } from '@trpc/react-query';
 import { httpBatchLink } from '@trpc/client';
+import type { inferRouterOutputs } from '@trpc/server';
 import { QueryClient } from '@tanstack/react-query';
 import type { AppRouter } from '@openmasjid/students-server';
 
 export const trpc = createTRPCReact<AppRouter>();
+
+/** Inferred output types for a procedure, e.g. RouterOutputs['admissions']['list'][number]. */
+export type RouterOutputs = inferRouterOutputs<AppRouter>;
 
 export const queryClient = new QueryClient({
   defaultOptions: { queries: { refetchOnWindowFocus: false } },

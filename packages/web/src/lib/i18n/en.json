@@ -42,7 +42,9 @@
     "loading": "Loading…",
     "close": "Close",
     "delete": "Delete",
-    "copy": "Copy"
+    "copy": "Copy",
+    "add": "Add",
+    "remove": "Remove"
   },
   "directory": {
     "title": "Directory",
@@ -90,7 +92,8 @@
     "myWeek": "My week",
     "myClasses": "My classes",
     "primary": "Primary navigation",
-    "billing": "Billing"
+    "billing": "Billing",
+    "admissions": "Admissions"
   },
   "days": {
     "0": "Sunday",
@@ -480,5 +483,39 @@
     "att_excused": "Excused",
     "schedule": "Weekly schedule",
     "noSchedule": "No sessions scheduled yet."
+  },
+  "admissions": {
+    "addApplicant": "Add applicant",
+    "newEnquiry": "New enquiry",
+    "guardianName": "Guardian name",
+    "phone": "Phone",
+    "email": "Email",
+    "childFirst": "Child first name",
+    "childLast": "Child last name",
+    "dob": "Date of birth",
+    "program": "Program interest",
+    "all": "All",
+    "none": "No applicants yet.",
+    "fromPublic": "From website",
+    "notes": "Notes",
+    "addNote": "Add a note…",
+    "noNotes": "No notes yet.",
+    "enroll": "Enroll",
+    "enrollNow": "Enroll now",
+    "confirmRemove": "Remove this applicant?",
+    "class": "Class",
+    "feePlan": "Fee plan",
+    "noFee": "No fee",
+    "genFirstInvoice": "Generate the first invoice",
+    "pickClass": "Choose a class.",
+    "invoiceNeedsFee": "Pick a fee plan and fill in the invoice details.",
+    "enrolledOk": "Enrolled — the student’s PIN is {{pin}}.",
+    "st_enquiry": "Enquiry",
+    "st_application": "Application",
+    "st_accepted": "Accepted",
+    "st_waitlisted": "Waitlisted",
+    "st_declined": "Declined",
+    "st_enrolled": "Enrolled",
+    "enrolledInvoicePending": "Enrolled — the student’s PIN is {{pin}}. The first invoice couldn’t be generated; create it in Billing."
   }
 }

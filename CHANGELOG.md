@@ -9,6 +9,26 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.20.0]
+
+### Added
+- **Admissions pipeline + one-click enroll** (§4/§5), staff-facing. Admin and finance run the
+  pipeline — **enquiry → application → accepted / waitlisted / declined → enrolled** — add applicants,
+  move stages, and keep per-applicant notes. **One-click enroll** creates the family + student (with
+  an auto PIN) + guardian (linked) + class enrollment, optionally assigns a fee plan and generates
+  the first invoice, and flips the applicant to *enrolled* — all in one atomic transaction. Admin
+  gets an **Admissions** dock section; finance's app now has Billing **and** Admissions. `enrolled`
+  is reachable only via enroll (never a manual stage move); applicant data is stored inert and
+  rendered as text only (the anonymous public /apply form lands next). i18n en/ar/ur. 5 new tests
+  (157 total); browser-verified the pipeline and enroll.
+
+### Fixed (from an adversarial review of the slice)
+- One-click enroll now **audits the enrollment before** the (post-transaction) first-invoice step,
+  and treats an invoice failure as **non-fatal** — the enroll always succeeds and is recorded, and
+  the UI says "generate the first invoice in Billing" instead of erroring and wedging a retry.
+- Enroll **refuses an archived fee plan** up front (it would otherwise create an enrollment fee that
+  silently never invoices).
+
 ## [0.19.0]
 
 ### Added

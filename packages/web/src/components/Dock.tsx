@@ -9,12 +9,14 @@
  */
 import { type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LayoutGrid, Users, GraduationCap, CalendarDays, ClipboardList, Wallet, UserCog, Settings as SettingsIcon, CalendarRange, AppWindow } from 'lucide-react';
+import { LayoutGrid, Users, GraduationCap, CalendarDays, ClipboardList, Wallet, UserCog, Settings as SettingsIcon, CalendarRange, AppWindow, UserPlus } from 'lucide-react';
 import { cn } from '../lib/cn';
 import { useWindows } from './Windows';
 
 /** Admin sections (Dock is generic; this union just types the admin shell's state). */
-export type Section = 'dashboard' | 'directory' | 'classes' | 'timetable' | 'exams' | 'billing' | 'staff' | 'settings';
+export type Section = 'dashboard' | 'directory' | 'classes' | 'timetable' | 'exams' | 'admissions' | 'billing' | 'staff' | 'settings';
+/** Finance sections (a small subset — finance runs billing + admissions, §5). */
+export type FinanceSection = 'billing' | 'admissions';
 
 export interface DockItem {
   id: string;
@@ -29,6 +31,7 @@ export const ADMIN_ITEMS: DockItem[] = [
   { id: 'classes', icon: <GraduationCap size={20} />, labelKey: 'nav.classes' },
   { id: 'timetable', icon: <CalendarDays size={20} />, labelKey: 'nav.timetable' },
   { id: 'exams', icon: <ClipboardList size={20} />, labelKey: 'nav.exams' },
+  { id: 'admissions', icon: <UserPlus size={20} />, labelKey: 'nav.admissions' },
   { id: 'billing', icon: <Wallet size={20} />, labelKey: 'nav.billing' },
   { id: 'staff', icon: <UserCog size={20} />, labelKey: 'nav.staff' },
   { id: 'settings', icon: <SettingsIcon size={20} />, labelKey: 'nav.settings' },
@@ -41,6 +44,7 @@ export const TEACH_ITEMS: DockItem[] = [
 
 export const FINANCE_ITEMS: DockItem[] = [
   { id: 'billing', icon: <Wallet size={20} />, labelKey: 'nav.billing' },
+  { id: 'admissions', icon: <UserPlus size={20} />, labelKey: 'nav.admissions' },
 ];
 
 export function Dock({ items, active, onNavigate }: { items: DockItem[]; active: string; onNavigate: (id: string) => void }) {

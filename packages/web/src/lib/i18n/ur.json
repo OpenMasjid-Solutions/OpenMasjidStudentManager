@@ -42,7 +42,9 @@
     "loading": "لوڈ ہو رہا ہے…",
     "close": "بند کریں",
     "delete": "حذف کریں",
-    "copy": "کاپی"
+    "copy": "کاپی",
+    "add": "شامل کریں",
+    "remove": "ہٹائیں"
   },
   "directory": {
     "title": "ڈائریکٹری",
@@ -90,7 +92,8 @@
     "myWeek": "میرا ہفتہ",
     "myClasses": "میری کلاسیں",
     "primary": "بنیادی نیویگیشن",
-    "billing": "بلنگ"
+    "billing": "بلنگ",
+    "admissions": "داخلے"
   },
   "days": {
     "0": "اتوار",
@@ -480,5 +483,39 @@
     "att_excused": "بعذر",
     "schedule": "ہفتہ وار شیڈول",
     "noSchedule": "ابھی کوئی کلاس شیڈول نہیں۔"
+  },
+  "admissions": {
+    "addApplicant": "درخواست گزار شامل کریں",
+    "newEnquiry": "نیا استفسار",
+    "guardianName": "سرپرست کا نام",
+    "phone": "فون",
+    "email": "ای میل",
+    "childFirst": "بچے کا پہلا نام",
+    "childLast": "بچے کا آخری نام",
+    "dob": "تاریخ پیدائش",
+    "program": "مطلوبہ پروگرام",
+    "all": "سب",
+    "none": "ابھی کوئی درخواست گزار نہیں۔",
+    "fromPublic": "ویب سائٹ سے",
+    "notes": "نوٹس",
+    "addNote": "نوٹ شامل کریں…",
+    "noNotes": "ابھی کوئی نوٹ نہیں۔",
+    "enroll": "اندراج",
+    "enrollNow": "ابھی اندراج کریں",
+    "confirmRemove": "اس درخواست گزار کو ہٹا دیں؟",
+    "class": "کلاس",
+    "feePlan": "فیس پلان",
+    "noFee": "کوئی فیس نہیں",
+    "genFirstInvoice": "پہلی انوائس بنائیں",
+    "pickClass": "ایک کلاس منتخب کریں۔",
+    "invoiceNeedsFee": "فیس پلان منتخب کریں اور انوائس کی تفصیلات بھریں۔",
+    "enrolledOk": "اندراج ہو گیا — طالب علم کا پن {{pin}} ہے۔",
+    "st_enquiry": "استفسار",
+    "st_application": "درخواست",
+    "st_accepted": "منظور",
+    "st_waitlisted": "ویٹ لسٹ",
+    "st_declined": "مسترد",
+    "st_enrolled": "مندرج",
+    "enrolledInvoicePending": "اندراج ہو گیا — طالب علم کا پن {{pin}} ہے۔ پہلی انوائس نہیں بن سکی؛ اسے بلنگ میں بنائیں۔"
   }
 }
