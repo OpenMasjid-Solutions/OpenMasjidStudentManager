@@ -46,3 +46,26 @@ export async function probePlatformSession(cookieHeader: string | undefined): Pr
     return { reachable: false };
   }
 }
+
+/**
+ * Fire a notification to the masjid webhook via the OS core (CLAUDE.md §4 — payments, autopay
+ * failures, new admissions, per-PIN lockouts). Best-effort: no-op when the platform isn't wired in,
+ * never throws, and NEVER carries PII (event name + ids only, §14).
+ */
+export async function notifyPlatform(event: string, detail: Record<string, unknown> = {}): Promise<void> {
+  if (!fabricConfigured()) return;
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 4000);
+    await fetch(`${config.omosBaseUrl}/api/fabric/notify`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'X-OpenMasjid-App-Secret': config.omosAppSecret },
+      body: JSON.stringify({ event, ...detail }),
+      signal: ctrl.signal,
+      redirect: 'error',
+    });
+    clearTimeout(timer);
+  } catch {
+    /* best-effort — a missed notification is never a failure of the operation that triggered it */
+  }
+}

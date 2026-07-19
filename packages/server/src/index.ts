@@ -24,6 +24,7 @@ import { createContext } from './trpc/trpc';
 import { registerReportRoutes } from './reports/routes';
 import { registerStatementRoutes } from './billing/statementRoutes';
 import { registerApplyRoute } from './admissions/apply';
+import { registerFabricProvider } from './fabric/provider';
 
 const log = makeLog('main');
 
@@ -79,6 +80,9 @@ async function main(): Promise<void> {
 
   // Anonymous public admissions form (§4, §14): its own zod + honeypot + rate-limit gates.
   registerApplyRoute(app);
+
+  // Fabric provider /fabric/billing/* (§11): secret-gated, tunnel-blocked; the students/billing capability.
+  registerFabricProvider(app);
 
   // Production: serve the built web UI + SPA fallback. In dev, Vite serves the UI
   // (config.publicDir is empty), so this whole block is skipped.

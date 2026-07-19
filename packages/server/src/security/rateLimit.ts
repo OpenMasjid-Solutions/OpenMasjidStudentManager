@@ -111,3 +111,8 @@ export class SubmitLimiter {
 /** Public admissions form: a short-window burst cap and a daily cap, both per real client IP (§14). */
 export const applyBurstLimiter = new SubmitLimiter(5, 10 * 60_000); // 5 / 10 min
 export const applyDailyLimiter = new SubmitLimiter(20, 24 * 60 * 60_000); // 20 / day
+
+/** Per-PIN lookup lockout for the Fabric name+PIN payment lookup (§14): 10 failed matches/hour on a
+ *  given PIN → that PIN is temporarily locked (and finance is notified). Compensates for the PIN's
+ *  low entropy. Keyed by the SUPPLIED pin; a success resets it. */
+export const pinLookupLimiter = new LoginLimiter({ maxFailures: 10, windowMs: 60 * 60_000, blockMs: 60 * 60_000 });

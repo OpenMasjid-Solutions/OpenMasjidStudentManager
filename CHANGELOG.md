@@ -9,6 +9,23 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.23.0]
+
+### Added
+- **Fabric provider — `students/billing` capability** (§11, the shared cross-repo contract). The
+  `/fabric/billing/*` methods the OpenMasjidOS core brokers from Donations and Kiosk so a parent can
+  pay tuition with their **child's name + PIN**: `info` (school + currency + enabled), `lookup`
+  (name + PIN → family + balance + open invoices), `record-payment` (idempotent, through the one
+  ledger write path), and `check` (outbox retry helper). Every response carries `"v": 1`.
+  Security (§11.1/§14): constant-time app-secret check (401 first; a standalone install with no
+  secret accepts nothing), tunnel-origin refused, strict zod, and idempotency at the DB. The lookup
+  gives a **uniform `found:false`** for every mismatch (no enumeration oracle), never returns full
+  last names / DOB / contact (first name + last initial only), and enforces a **per-PIN lockout**
+  (10 failed matches/hour → the PIN is locked and finance is notified) to compensate for the PIN's
+  low entropy. External payments fire a best-effort Fabric notification. An admin toggle can turn
+  external payments off (`info.enabled=false` → consumers hide the tuition campaign). 8 contract
+  tests (179 total). Consumers reach this only through the OS broker; it's never exposed over the tunnel.
+
 ## [0.22.0]
 
 ### Added

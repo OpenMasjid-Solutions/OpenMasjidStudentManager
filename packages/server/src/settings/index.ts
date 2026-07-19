@@ -13,6 +13,7 @@ export const SETTING_KEYS = {
   schoolName: 'school_name',
   currency: 'currency',
   meritOnReportCard: 'merit_on_report_card',
+  externalPayments: 'external_payments', // Donations/Kiosk tuition campaign on/off (§11.2 info.enabled)
 } as const;
 
 export function getSetting(key: string): string | null {
@@ -34,4 +35,8 @@ export function getCurrency(): string {
 }
 export function getMeritOnReportCard(): boolean {
   return getSetting(SETTING_KEYS.meritOnReportCard) === '1';
+}
+/** External (Donations/Kiosk) tuition payments — on unless the admin turned them off. */
+export function getExternalPaymentsEnabled(): boolean {
+  return getSetting(SETTING_KEYS.externalPayments) !== '0';
 }
