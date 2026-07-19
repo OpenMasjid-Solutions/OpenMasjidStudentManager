@@ -1005,3 +1005,61 @@ export const stripeEvents = sqliteTable('stripe_events', {
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
 });
 export type StripeEvent = typeof stripeEvents.$inferSelect;
+
+/** Saved cards — Stripe PaymentMethod REFERENCES only (CLAUDE.md §9, §13.3): id/brand/last4/exp,
+ *  NEVER a PAN. Off-session-capable, tied to the family's Stripe Customer. */
+export const paymentMethods = sqliteTable(
+  'payment_methods',
+  {
+    id: text('id').primaryKey(), // the Stripe PaymentMethod id (pm_…)
+    familyId: text('family_id')
+      .notNull()
+      .references(() => families.id, { onDelete: 'cascade' }),
+    brand: text('brand'),
+    last4: text('last4'),
+    expMonth: integer('exp_month'),
+    expYear: integer('exp_year'),
+    isDefault: integer('is_default', { mode: 'boolean' }).notNull().default(false),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({ famIdx: index('payment_methods_family_idx').on(t.familyId) }),
+);
+export type PaymentMethod = typeof paymentMethods.$inferSelect;
+
+/** Per-family autopay (CLAUDE.md §13.3): our scheduler charges the default card when invoices come
+ *  due — NOT Stripe Billing. `failureCount` + `nextAttemptAt` drive the retry ladder; consent is
+ *  timestamped. One row per family. */
+export const autopayEnrollments = sqliteTable('autopay_enrollments', {
+  familyId: text('family_id')
+    .primaryKey()
+    .references(() => families.id, { onDelete: 'cascade' }),
+  enabled: integer('enabled', { mode: 'boolean' }).notNull().default(false),
+  defaultPmId: text('default_pm_id'),
+  consentAt: integer('consent_at', { mode: 'timestamp_ms' }),
+  failureCount: integer('failure_count').notNull().default(0),
+  nextAttemptAt: text('next_attempt_at'), // ISO date; when set, the scheduler waits until this day
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+});
+export type AutopayEnrollment = typeof autopayEnrollments.$inferSelect;
+
+/** One autopay attempt for a family on a date (CLAUDE.md §9, §13.3). UNIQUE(family, run_date) is the
+ *  scheduler's own idempotency; the Stripe idempotency key for the PI is derived from `id`. */
+export const autopayRuns = sqliteTable(
+  'autopay_runs',
+  {
+    id: text('id').primaryKey(),
+    familyId: text('family_id')
+      .notNull()
+      .references(() => families.id, { onDelete: 'cascade' }),
+    runDate: text('run_date').notNull(), // ISO date
+    amountCents: integer('amount_cents').notNull(),
+    status: text('status').$type<'pending' | 'charged' | 'failed'>().notNull().default('pending'),
+    stripePaymentIntentId: text('stripe_payment_intent_id'),
+    attempt: integer('attempt').notNull().default(1),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (t) => ({ famDateUq: unique('autopay_runs_family_date_uq').on(t.familyId, t.runDate), piIdx: index('autopay_runs_pi_idx').on(t.stripePaymentIntentId) }),
+);
+export type AutopayRun = typeof autopayRuns.$inferSelect;

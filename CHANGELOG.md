@@ -9,6 +9,35 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.25.0]
+
+### Added
+- **Saved cards + autopay in the parent portal** (§13.3) — a parent can save a card with a Stripe
+  **SetupIntent** (off-session capable; card data never touches our server — only brand/last4/expiry
+  references are stored, never a PAN) and toggle **autopay** for their family, with clear consent
+  copy. A daily in-process scheduler (croner) charges every autopay-on family the sum of its invoices
+  **due by today**, off-session, against the default card. `autopay_runs` is UNIQUE per (family, day)
+  and the Stripe idempotency key is derived from the run id — one attempt per family per day.
+- **Retry ladder** — a failed autopay charge retries on **day +2** then **day +5**; after the **third**
+  failure autopay auto-disables and finance is notified. A successful charge — through **any** channel —
+  resets the ladder. All autopay changes are audited.
+
+### Security / correctness (hardening from the step-16 adversarial review)
+- **No cross-day double-charge on an unrecorded success.** An off-session confirm returns the outcome
+  synchronously, so a successful charge is now recorded to the ledger **immediately** (idempotent on the
+  PaymentIntent id — the webhook re-delivery is a harmless no-op). The balance clears before the next
+  daily tick, so a delayed/lost webhook can no longer leave the family "due" and get charged again. A
+  belt-and-suspenders **pending-run guard** additionally blocks a re-charge while a prior charge's
+  outcome is still unknown.
+- **Indeterminate failures no longer corrupt the ladder.** A definite card decline advances the ladder;
+  an ambiguous network/timeout error (where the charge may have gone through) leaves the run pending for
+  the webhook/reconciliation and does **not** advance the ladder — preventing a false early auto-disable.
+- **Robust run linkage.** Webhook success/failure now resolve the autopay run by our own run id (carried
+  in the PaymentIntent metadata) with a PaymentIntent-id fallback, and backfill the id — so a run whose
+  create() timed out before persisting the id is still reconciled correctly.
+- **Ladder resets on any balance-clearing payment.** Paying the balance via portal, cash, or the
+  Donations/Kiosk Fabric now resets a stale autopay failure count, so a fresh billing cycle starts clean.
+
 ## [0.24.0]
 
 ### Added

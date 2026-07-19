@@ -18,6 +18,7 @@ import { recordPayment } from '../billing/ledger';
 import { makeLog } from '../logger';
 import { notifyPlatform } from '../fabric/platform';
 import { verifierStripe, webhookSecret } from './stripe';
+import { onAutopaySucceeded, onAutopayFailed } from './autopay';
 
 const log = makeLog('stripe-webhook');
 
@@ -55,11 +56,18 @@ export function handleStripeEvent(event: Stripe.Event): void {
           // A bad allocation etc. shouldn't 500 the webhook (Stripe would retry forever). Log + ack.
           log.error('payment_intent.succeeded → ledger failed', { pi: pi.id, error: (e as Error).message });
         }
+        if (channel === 'autopay') onAutopaySucceeded(pi.id, md.students_autopay_run_id); // mark run charged + reset ladder (resolve by our run id — robust if the PI id was never persisted)
       }
       break;
     }
-    // payment_intent.payment_failed / setup_intent.succeeded / charge.refunded are handled with
-    // autopay + saved cards (later slices). Acknowledge them for now.
+    case 'payment_intent.payment_failed': {
+      const pi = event.data.object as Stripe.PaymentIntent;
+      const md = (pi.metadata ?? {}) as Record<string, string>;
+      if (md.omos_app === 'students-portal' && md.students_channel === 'autopay') onAutopayFailed(pi.id, md.students_autopay_run_id); // advance the ladder (resolve by our run id)
+      break;
+    }
+    // setup_intent.succeeded (saved cards) is handled by the client → portal.saveCard path; charge.refunded
+    // lands with refunds (later). Acknowledge everything else.
     default:
       break;
   }

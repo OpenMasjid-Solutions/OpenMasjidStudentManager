@@ -1,6 +1,6 @@
 {
   "name": "@openmasjid/students-server",
-  "version": "0.24.0",
+  "version": "0.25.0",
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "commonjs",
@@ -21,6 +21,7 @@
     "@react-pdf/renderer": "^4.5.1",
     "@trpc/server": "^11.0.0",
     "better-sqlite3": "^12.11.1",
+    "croner": "^9.0.0",
     "drizzle-orm": "^0.38.3",
     "fastify": "^5.2.1",
     "qrcode": "^1.5.4",

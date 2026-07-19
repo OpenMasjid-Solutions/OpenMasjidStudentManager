@@ -113,4 +113,14 @@
 .att-chip.att-late { color: var(--color-gold, #d4af37); }
 .att-chip.att-absent { color: var(--color-danger, #e5645b); }
 
+/* Autopay toggle switch. */
+.switch { position: relative; display: inline-flex; align-items: center; cursor: pointer; }
+.switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.switch-track { width: 44px; height: 26px; border-radius: 999px; background: var(--glass-border, rgba(255,255,255,0.18)); transition: background 0.18s; position: relative; }
+.switch-track::after { content: ''; position: absolute; inset-inline-start: 3px; top: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; transition: transform 0.18s; }
+.switch input:checked + .switch-track { background: var(--color-primary, #1fa37a); }
+.switch input:checked + .switch-track::after { transform: translateX(18px); }
+.switch input:disabled + .switch-track { opacity: 0.5; cursor: not-allowed; }
+[dir="rtl"] .switch input:checked + .switch-track::after { transform: translateX(-18px); }
+
 /* The anonymous invite-accept / register pages reuse the .auth-card look — no extra CSS. */

@@ -1,0 +1,115 @@
+// SPDX-License-Identifier: AGPL-3.0-only
+// Copyright (C) 2026 OpenMasjid-Solutions
+/**
+ * Parent portal — saved cards + autopay (CLAUDE.md §13.3). Add a card with a Stripe SetupIntent
+ * (off-session capable; card data never touches our server), then toggle autopay — our scheduler
+ * charges the default card when tuition comes due, with clear consent copy. Hidden when card
+ * payments aren't configured. */
+import { useState, type FormEvent } from 'react';
+import { loadStripe, type Stripe } from '@stripe/stripe-js';
+import { Elements, PaymentElement, useStripe, useElements } from '@stripe/react-stripe-js';
+import { useTranslation } from 'react-i18next';
+import { CreditCard, Trash2 } from 'lucide-react';
+import { trpc } from '../../lib/trpc';
+
+export function PayMethods({ familyId }: { familyId: string }) {
+  const { t } = useTranslation();
+  const utils = trpc.useUtils();
+  const statusQ = trpc.portal.autopayStatus.useQuery({ familyId });
+  const createSetup = trpc.portal.createSetupIntent.useMutation();
+  const saveCard = trpc.portal.saveCard.useMutation();
+  const removeCard = trpc.portal.removeCard.useMutation();
+  const setAutopay = trpc.portal.setAutopay.useMutation();
+  const [adding, setAdding] = useState<{ clientSecret: string; stripe: Promise<Stripe | null> } | null>(null);
+  const refresh = () => utils.portal.autopayStatus.invalidate({ familyId });
+
+  if (!statusQ.data?.ready) return null; // card payments not configured → nothing to show
+  const { enabled, cards } = statusQ.data;
+
+  async function addCard() {
+    const r = await createSetup.mutateAsync({ familyId });
+    if (r.clientSecret && r.publishableKey) setAdding({ clientSecret: r.clientSecret, stripe: loadStripe(r.publishableKey) });
+  }
+
+  return (
+    <section className="fam-section">
+      <h2>{t('family.autopayCards')}</h2>
+
+      {cards.length === 0 ? (
+        <div className="fam-empty">{t('family.noCards')}</div>
+      ) : (
+        cards.map((c) => (
+          <div key={c.id} className="list-row glass">
+            <span style={{ display: 'inline-flex', color: 'var(--color-primary)' }}><CreditCard size={18} /></span>
+            <div className="row-main">
+              <span className="row-title">{(c.brand ?? 'card').toUpperCase()} ···· {c.last4}</span>
+              <span className="row-sub">{t('family.expires')} {c.expMonth}/{c.expYear}{c.isDefault ? ` · ${t('family.defaultCard')}` : ''}</span>
+            </div>
+            <button type="button" className="btn btn--ghost btn--sm" aria-label={t('common.remove')} onClick={async () => { if (!window.confirm(t('family.removeCardConfirm'))) return; await removeCard.mutateAsync({ familyId, paymentMethodId: c.id }); await refresh(); }}><Trash2 size={15} /></button>
+          </div>
+        ))
+      )}
+
+      {adding ? (
+        <div className="glass-inset" style={{ padding: '0.75rem', borderRadius: '12px', marginBlockStart: '0.5rem' }}>
+          <Elements stripe={adding.stripe} options={{ clientSecret: adding.clientSecret, appearance: { theme: 'night' } }}>
+            <CardSetupForm onSaved={async (pmId) => { await saveCard.mutateAsync({ familyId, paymentMethodId: pmId }); setAdding(null); await refresh(); }} onCancel={() => setAdding(null)} />
+          </Elements>
+        </div>
+      ) : (
+        <button type="button" className="btn btn--ghost btn--sm" style={{ marginBlockStart: '0.5rem' }} onClick={addCard} disabled={createSetup.isPending}><CreditCard size={15} /> {t('family.addCard')}</button>
+      )}
+
+      {/* Autopay toggle — needs a card on file. */}
+      <div className="list-row glass" style={{ marginBlockStart: '0.75rem' }}>
+        <div className="row-main">
+          <span className="row-title">{t('family.autopay')}</span>
+          <span className="row-sub">{enabled ? t('family.autopayOn') : t('family.autopayOff')}</span>
+        </div>
+        <label className="switch" style={{ marginInlineStart: 'auto' }}>
+          <input
+            type="checkbox"
+            checked={enabled}
+            disabled={setAutopay.isPending || (!enabled && cards.length === 0)}
+            onChange={async (e) => { await setAutopay.mutateAsync({ familyId, enabled: e.target.checked }); await refresh(); }}
+          />
+          <span className="switch-track" aria-hidden="true" />
+        </label>
+      </div>
+      {!enabled && cards.length > 0 && <p className="hint" style={{ marginBlockStart: '0.3rem' }}>{t('family.autopayConsent')}</p>}
+    </section>
+  );
+}
+
+function CardSetupForm({ onSaved, onCancel }: { onSaved: (pmId: string) => void; onCancel: () => void }) {
+  const { t } = useTranslation();
+  const stripe = useStripe();
+  const elements = useElements();
+  const [status, setStatus] = useState<'idle' | 'saving' | 'error'>('idle');
+  const [error, setError] = useState('');
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    if (!stripe || !elements) return;
+    setStatus('saving');
+    setError('');
+    const { error: err, setupIntent } = await stripe.confirmSetup({ elements, redirect: 'if_required' });
+    if (err || !setupIntent?.payment_method) {
+      setError(err?.message ?? t('family.payError'));
+      setStatus('error');
+      return;
+    }
+    onSaved(typeof setupIntent.payment_method === 'string' ? setupIntent.payment_method : setupIntent.payment_method.id);
+  }
+
+  return (
+    <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+      <PaymentElement />
+      {error && <p className="form-error">{error}</p>}
+      <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <button type="submit" className="btn btn--primary" disabled={!stripe || status === 'saving'}>{status === 'saving' ? t('auth.working') : t('family.saveCard')}</button>
+        <button type="button" className="btn btn--ghost" onClick={onCancel}>{t('common.cancel')}</button>
+      </div>
+    </form>
+  );
+}

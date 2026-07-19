@@ -27,6 +27,7 @@ import { registerApplyRoute } from './admissions/apply';
 import { registerFabricProvider } from './fabric/provider';
 import { registerStripeWebhook } from './payments/webhook';
 import { loadStripeKeys } from './payments/stripe';
+import { startSchedulers } from './payments/scheduler';
 
 const log = makeLog('main');
 
@@ -42,6 +43,7 @@ async function main(): Promise<void> {
   seedMeritDefaults(); // the shipped merit categories (idempotent)
   purgeExpiredSessions();
   void loadStripeKeys(); // best-effort: fetch Stripe keys from the Fabric (no-op standalone / not configured)
+  startSchedulers(); // daily autopay run (no-op standalone)
 
   const app = Fastify({
     logger: false, // we log ourselves and never log secrets (CLAUDE.md §14)

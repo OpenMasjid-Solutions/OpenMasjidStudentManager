@@ -44,7 +44,8 @@
     "delete": "Delete",
     "copy": "Copy",
     "add": "Add",
-    "remove": "Remove"
+    "remove": "Remove",
+    "cancel": "Cancel"
   },
   "directory": {
     "title": "Directory",
@@ -492,7 +493,18 @@
     "payMin": "Enter at least 1.00.",
     "payUnavailable": "Card payments are temporarily unavailable.",
     "payError": "That payment couldn’t be completed. Please try again.",
-    "paidOptimistic": "Payment received — it’ll show on your account in a moment. Thank you."
+    "paidOptimistic": "Payment received — it’ll show on your account in a moment. Thank you.",
+    "autopayCards": "Autopay & saved cards",
+    "noCards": "No saved cards.",
+    "addCard": "Add a card",
+    "saveCard": "Save card",
+    "removeCardConfirm": "Remove this card?",
+    "expires": "Expires",
+    "defaultCard": "Default",
+    "autopay": "Autopay",
+    "autopayOn": "On — we’ll charge your default card when tuition is due.",
+    "autopayOff": "Off",
+    "autopayConsent": "When on, your default card is charged automatically when tuition comes due. Turn it off any time."
   },
   "admissions": {
     "addApplicant": "Add applicant",

@@ -11,7 +11,7 @@
 import { and, eq, asc, inArray, sql } from 'drizzle-orm';
 import { db } from '../db';
 import type { DB } from '../db';
-import { invoices, invoiceItems, payments, paymentAllocations } from '../db/schema';
+import { invoices, invoiceItems, payments, paymentAllocations, autopayEnrollments } from '../db/schema';
 import type { InvoiceStatus, PaymentChannel } from '../db/schema';
 import { rid } from '../db/ids';
 
@@ -124,6 +124,13 @@ export function recordPayment(input: RecordInput, actor: Actor): { paymentId: st
       }
     }
   });
+  // A payment that clears the family's balance (via ANY channel — portal, manual, autopay, Fabric)
+  // resets the autopay retry ladder: it tracks CONSECUTIVE failures against outstanding debt, so once
+  // the debt is gone a fresh billing cycle must start at zero, not inherit a stale failure count that
+  // could trip the auto-disable early (§13.3). A no-op for families without an autopay enrollment.
+  if (familyBalance(input.familyId).owedCents === 0) {
+    db.update(autopayEnrollments).set({ failureCount: 0, nextAttemptAt: null, updatedAt: new Date() }).where(eq(autopayEnrollments.familyId, input.familyId)).run();
+  }
   return { paymentId, duplicate: false, allocatedCents: allocated, creditCents: input.amountCents - allocated };
 }
 

@@ -12,7 +12,7 @@ import { TRPCError } from '@trpc/server';
 import { and, eq, asc, desc, inArray } from 'drizzle-orm';
 import { router, parentProcedure } from './trpc';
 import { db } from '../db';
-import { families, students, invoices, payments, reportCards, transcripts, classes, classSessions, enrollments, gradeItems, grades, attendance, meritAwards, meritCategories } from '../db/schema';
+import { families, students, invoices, payments, reportCards, transcripts, classes, classSessions, enrollments, gradeItems, grades, attendance, meritAwards, meritCategories, paymentMethods, autopayEnrollments } from '../db/schema';
 import { familyBalance, invoiceTotal, invoicePaid } from '../billing/ledger';
 import { getCurrency } from '../settings';
 import { parentFamilyIds, parentStudentIds, assertStudentAccess, assertFamilyAccess } from './familyAccess';
@@ -188,6 +188,91 @@ export const portalRouter = router({
       payLog.error('createPayment failed', { familyId: fam.id, error: (e as Error).message });
       throw new TRPCError({ code: 'BAD_GATEWAY', message: 'We couldn’t start your payment just now. Please try again in a moment.' });
     }
+  }),
+
+  /** Saved cards + autopay state for a family (§13.3). */
+  autopayStatus: parentProcedure.input(z.object({ familyId: z.string().min(1).max(64) })).query(({ ctx, input }) => {
+    assertFamilyAccess(ctx, input.familyId);
+    const enr = db.select().from(autopayEnrollments).where(eq(autopayEnrollments.familyId, input.familyId)).get();
+    const cards = db.select({ id: paymentMethods.id, brand: paymentMethods.brand, last4: paymentMethods.last4, expMonth: paymentMethods.expMonth, expYear: paymentMethods.expYear, isDefault: paymentMethods.isDefault }).from(paymentMethods).where(eq(paymentMethods.familyId, input.familyId)).all();
+    return { ready: stripeReady(), enabled: !!enr?.enabled, defaultPmId: enr?.defaultPmId ?? null, cards };
+  }),
+
+  /** Start saving a card: a SetupIntent (off-session capable) the browser confirms with Elements. */
+  createSetupIntent: parentProcedure.input(z.object({ familyId: z.string().min(1).max(64) })).mutation(async ({ ctx, input }) => {
+    assertFamilyAccess(ctx, input.familyId);
+    const stripe = stripeClient();
+    if (!stripe) throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Card payments are temporarily unavailable.' });
+    const fam = db.select({ id: families.id, name: families.name, stripeCustomerId: families.stripeCustomerId }).from(families).where(eq(families.id, input.familyId)).get();
+    if (!fam) throw new TRPCError({ code: 'NOT_FOUND', message: 'Family not found.' });
+    try {
+      let customerId = fam.stripeCustomerId;
+      if (!customerId) {
+        const c = await stripe.customers.create({ name: fam.name, metadata: { students_family_id: fam.id } });
+        customerId = c.id;
+        db.update(families).set({ stripeCustomerId: customerId, updatedAt: new Date() }).where(eq(families.id, fam.id)).run();
+      }
+      const si = await stripe.setupIntents.create({ customer: customerId, usage: 'off_session', metadata: { omos_app: 'students-portal', students_family_id: fam.id } });
+      return { clientSecret: si.client_secret, publishableKey: publishableKey() };
+    } catch (e) {
+      payLog.error('createSetupIntent failed', { familyId: fam.id, error: (e as Error).message });
+      throw new TRPCError({ code: 'BAD_GATEWAY', message: 'We couldn’t set up your card just now. Please try again in a moment.' });
+    }
+  }),
+
+  /** After the browser confirms the SetupIntent, persist the card REFERENCE (brand/last4/exp — never a
+   *  PAN) and attach it to the family's Stripe Customer. The first saved card becomes the default. */
+  saveCard: parentProcedure.input(z.object({ familyId: z.string().min(1).max(64), paymentMethodId: z.string().min(1).max(64) })).mutation(async ({ ctx, input }) => {
+    assertFamilyAccess(ctx, input.familyId);
+    const stripe = stripeClient();
+    if (!stripe) throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Card payments are temporarily unavailable.' });
+    const fam = db.select({ stripeCustomerId: families.stripeCustomerId }).from(families).where(eq(families.id, input.familyId)).get();
+    if (!fam?.stripeCustomerId) throw new TRPCError({ code: 'NOT_FOUND', message: 'Family not found.' });
+    try {
+      const pm = await stripe.paymentMethods.retrieve(input.paymentMethodId);
+      // Guard: the PM must belong to THIS family's customer (never attach someone else's card).
+      if (pm.customer && pm.customer !== fam.stripeCustomerId) throw new Error('pm_customer_mismatch');
+      if (!pm.customer) await stripe.paymentMethods.attach(input.paymentMethodId, { customer: fam.stripeCustomerId });
+      const isFirst = !db.select({ id: paymentMethods.id }).from(paymentMethods).where(eq(paymentMethods.familyId, input.familyId)).get();
+      const ts = new Date();
+      db.insert(paymentMethods).values({ id: pm.id, familyId: input.familyId, brand: pm.card?.brand ?? null, last4: pm.card?.last4 ?? null, expMonth: pm.card?.exp_month ?? null, expYear: pm.card?.exp_year ?? null, isDefault: isFirst, createdAt: ts }).onConflictDoNothing().run();
+      return { ok: true as const };
+    } catch (e) {
+      payLog.error('saveCard failed', { familyId: input.familyId, error: (e as Error).message });
+      throw new TRPCError({ code: 'BAD_GATEWAY', message: 'We couldn’t save that card. Please try again.' });
+    }
+  }),
+
+  /** Remove a saved card. If it was the autopay default, autopay is turned off (no card to charge). */
+  removeCard: parentProcedure.input(z.object({ familyId: z.string().min(1).max(64), paymentMethodId: z.string().min(1).max(64) })).mutation(async ({ ctx, input }) => {
+    assertFamilyAccess(ctx, input.familyId);
+    if (!db.select({ id: paymentMethods.id }).from(paymentMethods).where(and(eq(paymentMethods.id, input.paymentMethodId), eq(paymentMethods.familyId, input.familyId))).get()) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Card not found.' });
+    }
+    db.delete(paymentMethods).where(eq(paymentMethods.id, input.paymentMethodId)).run();
+    const enr = db.select().from(autopayEnrollments).where(eq(autopayEnrollments.familyId, input.familyId)).get();
+    if (enr?.defaultPmId === input.paymentMethodId) {
+      db.update(autopayEnrollments).set({ enabled: false, defaultPmId: null, updatedAt: new Date() }).where(eq(autopayEnrollments.familyId, input.familyId)).run();
+    }
+    const stripe = stripeClient();
+    if (stripe) { try { await stripe.paymentMethods.detach(input.paymentMethodId); } catch { /* best-effort */ } }
+    return { ok: true as const };
+  }),
+
+  /** Turn autopay on/off for a family (§13.3). Enabling requires a saved card + records consent. */
+  setAutopay: parentProcedure.input(z.object({ familyId: z.string().min(1).max(64), enabled: z.boolean() })).mutation(({ ctx, input }) => {
+    assertFamilyAccess(ctx, input.familyId);
+    const ts = new Date();
+    const enr = db.select().from(autopayEnrollments).where(eq(autopayEnrollments.familyId, input.familyId)).get();
+    if (input.enabled) {
+      const def = db.select({ id: paymentMethods.id }).from(paymentMethods).where(and(eq(paymentMethods.familyId, input.familyId), eq(paymentMethods.isDefault, true))).get() ?? db.select({ id: paymentMethods.id }).from(paymentMethods).where(eq(paymentMethods.familyId, input.familyId)).get();
+      if (!def) throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Add a card before turning on autopay.' });
+      if (enr) db.update(autopayEnrollments).set({ enabled: true, defaultPmId: def.id, consentAt: ts, failureCount: 0, nextAttemptAt: null, updatedAt: ts }).where(eq(autopayEnrollments.familyId, input.familyId)).run();
+      else db.insert(autopayEnrollments).values({ familyId: input.familyId, enabled: true, defaultPmId: def.id, consentAt: ts, failureCount: 0, nextAttemptAt: null, createdAt: ts, updatedAt: ts }).run();
+    } else if (enr) {
+      db.update(autopayEnrollments).set({ enabled: false, updatedAt: ts }).where(eq(autopayEnrollments.familyId, input.familyId)).run();
+    }
+    return { ok: true as const };
   }),
 
   /** One of the parent's kids: their weekly timetable (sessions across all enrolled classes). */

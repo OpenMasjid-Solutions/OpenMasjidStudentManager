@@ -10,6 +10,7 @@ import { staggerContainer, staggerItem } from '../../lib/motion';
 import { trpc } from '../../lib/trpc';
 import { formatMoney } from '../../lib/money';
 import { PayNow } from './PayNow';
+import { PayMethods } from './PayMethods';
 
 export function FamilyHome({ onOpenChild }: { onOpenChild: (studentId: string, name: string) => void }) {
   const { t } = useTranslation();
@@ -97,6 +98,9 @@ export function FamilyHome({ onOpenChild }: { onOpenChild: (studentId: string, n
                 ))
               )}
             </section>
+
+            {/* Saved cards + autopay (hidden when card payments aren't configured). */}
+            <PayMethods familyId={fam.id} />
           </motion.div>
         );
       })}
