@@ -93,7 +93,8 @@
     "myClasses": "My classes",
     "primary": "Primary navigation",
     "billing": "Billing",
-    "admissions": "Admissions"
+    "admissions": "Admissions",
+    "reports": "Reports"
   },
   "days": {
     "0": "Sunday",
@@ -174,22 +175,23 @@
     "hint": "The transcript is the student's cumulative record across all closed terms. Regenerating keeps old versions; publish makes the latest visible to parents (portal coming soon)."
   },
   "reports": {
-    "title": "Report cards",
-    "generateAll": "Generate all",
-    "generating": "Generating…",
-    "generate": "Generate",
-    "regenerate": "Regenerate",
-    "publishAll": "Publish to parents",
-    "unpublishAll": "Unpublish",
-    "downloadAll": "Download all (PDF)",
-    "download": "Download",
-    "student": "Student",
-    "version": "Version",
-    "generated": "Generated",
-    "status": "Status",
-    "published": "Published",
-    "unpublished": "Draft",
-    "hint": "Generating a card after fixing marks creates a new version — old versions are kept. Publish makes the latest visible to parents (portal coming soon)."
+    "dataset": "Dataset",
+    "pickDataset": "Choose a dataset…",
+    "columns": "Columns",
+    "filters": "Filters",
+    "addFilter": "Add filter",
+    "op_contains": "contains",
+    "op_equals": "equals",
+    "value": "Value",
+    "sortBy": "Sort by",
+    "direction": "Direction",
+    "asc": "Ascending",
+    "desc": "Descending",
+    "run": "Run report",
+    "results": "{{n}} row(s)",
+    "exportCsv": "Export CSV",
+    "print": "Print",
+    "noRows": "No rows match."
   },
   "exams": {
     "title": "Exams",

@@ -10,6 +10,7 @@ import { FINANCE_ITEMS, type FinanceSection } from '../../components/Dock';
 import { trpc } from '../../lib/trpc';
 import { Billing } from '../admin/Billing';
 import { Admissions } from '../admin/Admissions';
+import { Reports } from '../admin/Reports';
 
 export function FinanceApp() {
   const utils = trpc.useUtils();
@@ -18,7 +19,7 @@ export function FinanceApp() {
   return (
     <WindowsProvider>
       <AppShell items={FINANCE_ITEMS} active={section} onNavigate={(s) => setSection(s as FinanceSection)} onSignedOut={onSignedOut}>
-        {section === 'admissions' ? <Admissions /> : <Billing />}
+        {section === 'admissions' ? <Admissions /> : section === 'reports' ? <Reports /> : <Billing />}
       </AppShell>
     </WindowsProvider>
   );

@@ -9,6 +9,24 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.22.0]
+
+### Added
+- **Report Creator** (§4/§5/§14) — the office's own saved-report builder over **code-defined
+  datasets, never raw SQL**. Pick a dataset (Student directory, Invoices, Payments, Admissions),
+  choose columns, add filters and a sort, and **Run** → an on-screen table, **CSV export**
+  (formula-injection-escaped), and print. Datasets are **role-scoped at the registry**: admin sees
+  all; **finance sees billing + directory datasets only**; teachers/parents get no Report Creator.
+  Every run re-checks the dataset's minimum role, and user picks (columns/filters/sort) are validated
+  against the registry and applied in memory — unknown keys are dropped, never interpolated into SQL.
+  Available to admin and finance in their docks. i18n en/ar/ur. 6 tests (170 total) incl. the
+  no-injection guarantee and role walls; browser-verified build → run → table → CSV.
+
+### Fixed (from an adversarial review of the slice)
+- Report **filters are now type-aware**: a money column (stored in cents, shown as dollars) filtered
+  with "50" / "50.00" now matches the $50.00 rows (equals parses dollars; contains matches the
+  formatted value), instead of comparing against raw cents. 1 more test (171 total).
+
 ## [0.21.0]
 
 ### Added

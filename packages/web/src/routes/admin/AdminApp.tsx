@@ -15,6 +15,7 @@ import { Timetable } from './Timetable';
 import { Exams } from './Exams';
 import { Admissions } from './Admissions';
 import { Billing } from './Billing';
+import { Reports } from './Reports';
 import { Staff } from './Staff';
 import { Settings } from './Settings';
 
@@ -40,6 +41,8 @@ export function AdminApp() {
           <Admissions />
         ) : section === 'billing' ? (
           <Billing />
+        ) : section === 'reports' ? (
+          <Reports />
         ) : section === 'staff' ? (
           <Staff />
         ) : (
