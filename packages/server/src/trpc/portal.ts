@@ -8,13 +8,18 @@
  * cards land in later slices. Every value crosses through parentProcedure (LAN + tunnel).
  */
 import { z } from 'zod';
+import { TRPCError } from '@trpc/server';
 import { and, eq, asc, desc, inArray } from 'drizzle-orm';
 import { router, parentProcedure } from './trpc';
 import { db } from '../db';
 import { families, students, invoices, payments, reportCards, transcripts, classes, classSessions, enrollments, gradeItems, grades, attendance, meritAwards, meritCategories } from '../db/schema';
 import { familyBalance, invoiceTotal, invoicePaid } from '../billing/ledger';
 import { getCurrency } from '../settings';
-import { parentFamilyIds, parentStudentIds, assertStudentAccess } from './familyAccess';
+import { parentFamilyIds, parentStudentIds, assertStudentAccess, assertFamilyAccess } from './familyAccess';
+import { stripeClient, stripeReady, publishableKey } from '../payments/stripe';
+import { makeLog } from '../logger';
+
+const payLog = makeLog('portal');
 
 const STUDENT = z.object({ studentId: z.string().min(1).max(64) });
 
@@ -146,6 +151,43 @@ export const portalRouter = router({
     const catNames = new Map(db.select({ id: meritCategories.id, name: meritCategories.name }).from(meritCategories).all().map((c) => [c.id, c.name]));
     const history = awards.map((a) => ({ points: a.points, category: catNames.get(a.categoryId) ?? '—', note: a.note, at: a.at }));
     return { total, history };
+  }),
+
+  /** Whether card payments are available + the publishable key for Stripe Elements (§13.1/§13.2). */
+  payConfig: parentProcedure.query(() => ({ ready: stripeReady(), publishableKey: publishableKey(), currency: getCurrency() })),
+
+  /** Create a PaymentIntent for a chosen amount against one of the parent's families (§13.2). Card
+   *  data never touches our server — the browser confirms with Elements. The LEDGER truth lands on
+   *  the webhook (channel `portal`, idempotency = PI id); this just mints the intent. */
+  createPayment: parentProcedure.input(z.object({ familyId: z.string().min(1).max(64), amountCents: z.number().int().min(100).max(100_000_000) })).mutation(async ({ ctx, input }) => {
+    assertFamilyAccess(ctx, input.familyId);
+    const stripe = stripeClient();
+    if (!stripe) throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Card payments are temporarily unavailable.' });
+    const fam = db.select({ id: families.id, name: families.name, stripeCustomerId: families.stripeCustomerId }).from(families).where(eq(families.id, input.familyId)).get();
+    if (!fam) throw new TRPCError({ code: 'NOT_FOUND', message: 'Family not found.' });
+
+    try {
+      let customerId = fam.stripeCustomerId;
+      if (!customerId) {
+        const c = await stripe.customers.create({ name: fam.name, metadata: { students_family_id: fam.id } });
+        customerId = c.id;
+        db.update(families).set({ stripeCustomerId: customerId, updatedAt: new Date() }).where(eq(families.id, fam.id)).run();
+      }
+      const pi = await stripe.paymentIntents.create({
+        amount: input.amountCents,
+        currency: getCurrency(),
+        customer: customerId,
+        description: `School balance — ${fam.name}`,
+        // §11.3 metadata — the webhook keys off these. NEVER the PIN or a typed name.
+        metadata: { purpose: 'students-billing', omos_app: 'students-portal', students_family_id: fam.id, students_channel: 'portal' },
+        automatic_payment_methods: { enabled: true },
+      });
+      return { clientSecret: pi.client_secret, publishableKey: publishableKey() };
+    } catch (e) {
+      // Never surface a raw Stripe/DB message to the parent (§15/§18) — log ids only, return one warm line.
+      payLog.error('createPayment failed', { familyId: fam.id, error: (e as Error).message });
+      throw new TRPCError({ code: 'BAD_GATEWAY', message: 'We couldn’t start your payment just now. Please try again in a moment.' });
+    }
   }),
 
   /** One of the parent's kids: their weekly timetable (sessions across all enrolled classes). */

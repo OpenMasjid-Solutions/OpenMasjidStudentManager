@@ -484,7 +484,15 @@
     "att_late": "Late",
     "att_excused": "Excused",
     "schedule": "Weekly schedule",
-    "noSchedule": "No sessions scheduled yet."
+    "noSchedule": "No sessions scheduled yet.",
+    "payNow": "Pay now",
+    "payAmount": "Amount ({{currency}})",
+    "continueToCard": "Continue to payment",
+    "payCard": "Pay",
+    "payMin": "Enter at least 1.00.",
+    "payUnavailable": "Card payments are temporarily unavailable.",
+    "payError": "That payment couldn’t be completed. Please try again.",
+    "paidOptimistic": "Payment received — it’ll show on your account in a moment. Thank you."
   },
   "admissions": {
     "addApplicant": "Add applicant",

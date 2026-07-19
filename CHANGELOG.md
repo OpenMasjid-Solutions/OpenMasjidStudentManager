@@ -9,6 +9,28 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.24.0]
+
+### Added
+- **Pay tuition by card in the parent portal** (§13.1/§13.2) — Stripe pay-now. A parent with a
+  balance sees **Pay now**, enters an amount (default their full balance), and pays with **Stripe
+  Elements** — card data never touches our server. Stripe keys are fetched from the OS over the
+  Fabric (`GET /api/fabric/stripe`); the publishable key goes to the browser, the secret key stays
+  in server memory only. The **ledger truth lands on the signature-verified webhook**
+  (`POST /api/stripe/webhook`): it verifies the Stripe signature over the raw body, dedupes events,
+  records the payment on the `portal` (or `autopay`) channel with the PaymentIntent id as the
+  idempotency key, and only ever touches OUR intents (`metadata.omos_app = students-portal`).
+  Success is worded honestly ("it'll show on your account in a moment"), since the webhook confirms
+  it. Card payments degrade gracefully ("temporarily unavailable") when keys aren't configured.
+  9 payment tests (184 total) covering the webhook→ledger core; the live Elements flow needs a
+  Stripe test account wired through the OS.
+
+### Fixed (from an adversarial review of the slice)
+- The webhook only **notifies finance on a genuinely-new payment** — a re-delivery or a
+  reconciliation overlap (payment already recorded via the PI-id key) no longer re-alerts.
+- A live Stripe/DB error during pay-now now returns a **warm one-line message** instead of a raw
+  technical string (§18: no raw error reaches the user).
+
 ## [0.23.0]
 
 ### Added

@@ -21,6 +21,7 @@ import { config } from '../config';
 import { classifyOrigin } from '../security/origin';
 import { pinLookupLimiter } from '../security/rateLimit';
 import { familyBalance, invoiceTotal, invoicePaid, recordPayment } from '../billing/ledger';
+import { formatMoney } from '../db/money';
 import { getSchoolName, getCurrency, getExternalPaymentsEnabled } from '../settings';
 import { audit } from '../audit';
 import { notifyPlatform } from './platform';
@@ -88,8 +89,8 @@ export function registerFabricProvider(app: FastifyInstance): void {
       const wasLocked = pinLookupLimiter.retryAfterMs(pin) > 0;
       pinLookupLimiter.fail(pin);
       if (!wasLocked && pinLookupLimiter.retryAfterMs(pin) > 0) {
-        // Just transitioned to locked — someone is hammering this PIN. Tell finance (no PIN in the payload).
-        void notifyPlatform('students.pin_locked', { studentId: student?.id ?? null });
+        // Just transitioned to locked — someone is hammering this PIN. Tell finance (no PIN/PII).
+        void notifyPlatform('A tuition name+PIN lookup was locked after repeated failed attempts.', { title: 'Tuition lookup locked', level: 'warn' });
       }
       return reply.send({ v: 1, found: false }); // identical shape + no timing oracle beyond a hash
     }
@@ -160,7 +161,8 @@ export function registerFabricProvider(app: FastifyInstance): void {
     }
     if (!res.duplicate) {
       audit({ userId: null, role: 'fabric', name: d.channel }, 'payment.record', { entity: 'family', entityId: d.familyId, detail: { channel: d.channel, amountCents: d.amountCents } });
-      void notifyPlatform('students.payment_recorded', { familyId: d.familyId, amountCents: d.amountCents, channel: d.channel });
+      // Amount + channel only — never a family/student name (§14: no name+amount together).
+      void notifyPlatform(`A tuition payment of ${formatMoney(d.amountCents, getCurrency())} was received (${d.channel}).`, { title: 'Tuition payment' });
     }
     return reply.send({ v: 1, recorded: true, paymentId: res.paymentId, duplicate: res.duplicate });
   });

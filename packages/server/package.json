@@ -1,6 +1,6 @@
 {
   "name": "@openmasjid/students-server",
-  "version": "0.23.0",
+  "version": "0.24.0",
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "commonjs",
@@ -25,6 +25,7 @@
     "fastify": "^5.2.1",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
+    "stripe": "^17.5.0",
     "zod": "^3.24.1"
   },
   "devDependencies": {

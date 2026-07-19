@@ -9,11 +9,14 @@ import { Download, FileText } from 'lucide-react';
 import { staggerContainer, staggerItem } from '../../lib/motion';
 import { trpc } from '../../lib/trpc';
 import { formatMoney } from '../../lib/money';
+import { PayNow } from './PayNow';
 
 export function FamilyHome({ onOpenChild }: { onOpenChild: (studentId: string, name: string) => void }) {
   const { t } = useTranslation();
   const q = trpc.portal.myFamily.useQuery();
   const reportsQ = trpc.portal.myReports.useQuery();
+  const payConfigQ = trpc.portal.payConfig.useQuery();
+  const utils = trpc.useUtils();
 
   if (q.isLoading) return <div className="fam-empty">{t('status.connecting')}</div>;
   // A transient failure must not masquerade as "you have no family" (which tells them to call the office).
@@ -39,6 +42,9 @@ export function FamilyHome({ onOpenChild }: { onOpenChild: (studentId: string, n
                 {owed ? money(fam.balance.owedCents) : credit ? money(fam.balance.creditCents) : money(0)}
               </div>
               <div className="sub">{owed ? t('family.due') : credit ? t('family.inCredit') : t('family.allSettled')}</div>
+              {owed && payConfigQ.data?.ready && (
+                <PayNow familyId={fam.id} owedCents={fam.balance.owedCents} currency={data.currency} onPaid={() => void utils.portal.myFamily.invalidate()} />
+              )}
             </div>
 
             {/* Kids + PINs */}

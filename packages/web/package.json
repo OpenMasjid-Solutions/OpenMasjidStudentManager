@@ -1,6 +1,6 @@
 {
   "name": "@openmasjid/students-web",
-  "version": "0.23.0",
+  "version": "0.24.0",
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "module",
@@ -14,6 +14,8 @@
     "@fontsource-variable/inter": "^5.1.1",
     "@fontsource-variable/space-grotesk": "^5.1.1",
     "@openmasjid/students-server": "*",
+    "@stripe/react-stripe-js": "^3.1.1",
+    "@stripe/stripe-js": "^5.5.0",
     "@tanstack/react-query": "^5.62.8",
     "@trpc/client": "^11.0.0",
     "@trpc/react-query": "^11.0.0",

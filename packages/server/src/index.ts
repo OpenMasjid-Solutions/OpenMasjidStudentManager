@@ -25,6 +25,8 @@ import { registerReportRoutes } from './reports/routes';
 import { registerStatementRoutes } from './billing/statementRoutes';
 import { registerApplyRoute } from './admissions/apply';
 import { registerFabricProvider } from './fabric/provider';
+import { registerStripeWebhook } from './payments/webhook';
+import { loadStripeKeys } from './payments/stripe';
 
 const log = makeLog('main');
 
@@ -39,6 +41,7 @@ async function main(): Promise<void> {
   seedGradingDefaults(); // the three shipped grading scales (idempotent)
   seedMeritDefaults(); // the shipped merit categories (idempotent)
   purgeExpiredSessions();
+  void loadStripeKeys(); // best-effort: fetch Stripe keys from the Fabric (no-op standalone / not configured)
 
   const app = Fastify({
     logger: false, // we log ourselves and never log secrets (CLAUDE.md §14)
@@ -83,6 +86,10 @@ async function main(): Promise<void> {
 
   // Fabric provider /fabric/billing/* (§11): secret-gated, tunnel-blocked; the students/billing capability.
   registerFabricProvider(app);
+
+  // Stripe webhook intake (§13.4): signature-verified, event-deduped → the ledger. Reachable at the
+  // app's public URL (a path outside /fabric/, so the tunnel lets it through).
+  registerStripeWebhook(app);
 
   // Production: serve the built web UI + SPA fallback. In dev, Vite serves the UI
   // (config.publicDir is empty), so this whole block is skipped.

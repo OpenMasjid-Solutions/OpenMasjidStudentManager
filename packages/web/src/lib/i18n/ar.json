@@ -484,7 +484,15 @@
     "att_late": "متأخر",
     "att_excused": "بعذر",
     "schedule": "الجدول الأسبوعي",
-    "noSchedule": "لا توجد حصص مجدولة بعد."
+    "noSchedule": "لا توجد حصص مجدولة بعد.",
+    "payNow": "ادفع الآن",
+    "payAmount": "المبلغ ({{currency}})",
+    "continueToCard": "المتابعة إلى الدفع",
+    "payCard": "ادفع",
+    "payMin": "أدخل 1.00 على الأقل.",
+    "payUnavailable": "الدفع بالبطاقة غير متاح مؤقتاً.",
+    "payError": "تعذّر إتمام الدفع. يُرجى المحاولة مرة أخرى.",
+    "paidOptimistic": "تم استلام الدفعة — ستظهر في حسابك خلال لحظات. شكراً لك."
   },
   "admissions": {
     "addApplicant": "إضافة متقدم",

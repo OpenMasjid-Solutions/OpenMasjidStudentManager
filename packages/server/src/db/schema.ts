@@ -78,6 +78,8 @@ export const families = sqliteTable('families', {
   status: text('status').$type<'active' | 'archived'>().notNull().default('active'),
   discountKind: text('discount_kind').$type<'none' | 'fixed' | 'percent'>().notNull().default('none'),
   discountValue: integer('discount_value').notNull().default(0), // cents (fixed) or basis points (percent)
+  /** Stripe Customer id — created on the family's first saved card / portal payment (§13.1). */
+  stripeCustomerId: text('stripe_customer_id'),
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
   updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
 });
@@ -992,3 +994,14 @@ export const admissionNotes = sqliteTable('admission_notes', {
   createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
 });
 export type AdmissionNote = typeof admissionNotes.$inferSelect;
+
+// ── Payments: Stripe webhook dedupe (step 15) ────────────────────────────────
+
+/** Processed Stripe webhook events (CLAUDE.md §9, §13.4). `eventId` is UNIQUE, so a replayed
+ *  webhook is a no-op — the ledger stays idempotent even if Stripe re-delivers an event. */
+export const stripeEvents = sqliteTable('stripe_events', {
+  eventId: text('event_id').primaryKey(),
+  type: text('type').notNull(),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+});
+export type StripeEvent = typeof stripeEvents.$inferSelect;
