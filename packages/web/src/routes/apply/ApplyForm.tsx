@@ -8,6 +8,7 @@ import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
 import { MasjidMark } from '../../components/Glyphs';
 import { fadeRise } from '../../lib/motion';
+import { withBase } from '../../lib/base';
 
 export function ApplyForm() {
   const { t } = useTranslation();
@@ -20,7 +21,7 @@ export function ApplyForm() {
     if (!f.guardianName.trim() || !f.childFirstName.trim() || !f.childLastName.trim()) return;
     setState('sending');
     try {
-      const r = await fetch('/apply', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(f) });
+      const r = await fetch(withBase('/apply'), { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(f) });
       setState(r.ok ? 'done' : 'error');
     } catch {
       setState('error');

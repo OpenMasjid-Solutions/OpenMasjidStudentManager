@@ -17,7 +17,7 @@ import { db } from '../db';
 import { users, guardians, guardianUsers, invites, type Role } from '../db/schema';
 import { rid } from '../db/ids';
 import { hashPassword, verifyPassword, dummyHash, MIN_PASSWORD_LENGTH } from '../auth/passwords';
-import { createSession, destroySession, cookieOptions, COOKIE, SSO_SESSION_TTL_MS, hashToken } from '../auth/sessions';
+import { createSession, destroySession, cookieOptions, COOKIE, COOKIE_PATH, SSO_SESSION_TTL_MS, hashToken } from '../auth/sessions';
 import { probePlatformSession } from '../fabric/platform';
 import { fabricConfigured, config } from '../config';
 import { clientIp } from '../security/origin';
@@ -152,7 +152,7 @@ export const authRouter = router({
 
   logout: publicProcedure.mutation(({ ctx }) => {
     destroySession(ctx.token);
-    ctx.res.clearCookie(COOKIE, { path: '/' });
+    ctx.res.clearCookie(COOKIE, { path: COOKIE_PATH }); // must match the Path the cookie was set with (RFC 6265)
     return { ok: true as const };
   }),
 

@@ -4,6 +4,7 @@
  *  wrapped by ShellControls on auth screens, used inline in the admin topbar. */
 import { useTranslation } from 'react-i18next';
 import { usePrefs, prefsStore } from '../lib/prefs';
+import { stopFollowing } from '../lib/appearance';
 
 const LANGS = [
   { id: 'en', label: 'English' },
@@ -17,6 +18,7 @@ export function ThemeLangControls() {
   const prefs = usePrefs();
 
   function cycleTheme() {
+    stopFollowing(); // a manual theme choice → stop inheriting the OS theme (§15)
     const i = THEMES.indexOf(prefs.theme);
     prefsStore.patch({ theme: THEMES[(i + 1) % THEMES.length] });
   }

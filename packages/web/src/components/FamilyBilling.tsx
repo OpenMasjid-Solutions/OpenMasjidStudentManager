@@ -8,6 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { Printer } from 'lucide-react';
 import { trpc } from '../lib/trpc';
 import { formatMoney, parseCents } from '../lib/money';
+import { withBase } from '../lib/base';
 
 export function FamilyBilling({ familyId, currency }: { familyId: string; currency: string }) {
   const { t } = useTranslation();
@@ -54,7 +55,7 @@ export function FamilyBilling({ familyId, currency }: { familyId: string; curren
       <section className="section glass" style={{ padding: '1rem 1.1rem' }}>
         <div className="section-head">
           <h2>{t('billing.balance')}</h2>
-          <a className="btn btn--ghost btn--sm" href={`/statements/family/${familyId}`} target="_blank" rel="noopener noreferrer"><Printer size={14} /> {t('billing.printStatement')}</a>
+          <a className="btn btn--ghost btn--sm" href={withBase(`/statements/family/${familyId}`)} target="_blank" rel="noopener noreferrer"><Printer size={14} /> {t('billing.printStatement')}</a>
         </div>
         {bal && (
           <div className="bal-big" style={{ color: bal.owedCents > 0 ? 'var(--color-danger)' : 'var(--color-success)' }}>

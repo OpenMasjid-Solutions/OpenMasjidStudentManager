@@ -9,6 +9,28 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.27.0]
+
+### Added
+- **Runs behind the OpenMasjidOS Cloudflare tunnel at `/students`** (§12/§15). Teachers, the finance
+  manager, and parents can now sign in and work over the tunnel (admin stays LAN-only via the
+  `omos_session` SSO cookie — enforced server-side, unchanged). One build serves at the root on the
+  LAN and under the admin-chosen tunnel prefix: the server strips the forwarded prefix before routing
+  and injects a `<base href>` + `window.__OMOS_BASE__`; the client (Vite `base: './'` + a small
+  `base.ts`) keeps the prefix on tRPC, the public `/apply` form, report/transcript/statement links,
+  and the Stripe webhook URL. Mirrors the shipped OpenMasjidDonations pattern.
+- **Inherits the OS dashboard's appearance** (§15) — the parent portal and staff surfaces now pick up
+  the masjid's **wallpaper** and **light/dark** theme from OpenMasjidOS: a one-shot `#omos=` hand-off
+  when opened from the dashboard, plus live sync via a same-origin `/api/public/appearance` relay
+  (polled every 45s). Preset wallpapers are local CSS gradients, so they render over the tunnel with
+  no OS-hosted assets. A manual theme change in-app stops the app from following the OS.
+
+### Security / correctness (hardening from the step review)
+- **The session cookie is scoped to the app's mount path** (e.g. `/students`) instead of `/`, so the
+  token is never sent to sibling apps sharing the tunnel domain (defense-in-depth, §14).
+- **The appearance relay's 4-second timeout now bounds the whole exchange** (the abort is cleared only
+  after the body is read), and a 10s cache keeps many polling tabs from piling up outbound requests.
+
 ## [0.26.0]
 
 ### Added

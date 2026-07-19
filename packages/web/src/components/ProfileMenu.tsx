@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { Moon, Sun, LogOut, User, Globe } from 'lucide-react';
 import { trpc } from '../lib/trpc';
 import { usePrefs, prefsStore } from '../lib/prefs';
+import { stopFollowing } from '../lib/appearance';
 
 const LANGS = [
   { id: 'en', label: 'English' },
@@ -43,7 +44,7 @@ export function ProfileMenu({ onSignedOut }: { onSignedOut: () => void }) {
       </button>
       {open && (
         <div className="menu glass-raised" role="menu">
-          <button className="menu-item" onClick={() => prefsStore.patch({ theme: isDark ? 'light' : 'dark' })}>
+          <button className="menu-item" onClick={() => { stopFollowing(); prefsStore.patch({ theme: isDark ? 'light' : 'dark' }); }}>
             {isDark ? <Sun size={16} /> : <Moon size={16} />}
             {isDark ? t('profile.lightMode') : t('profile.darkMode')}
           </button>

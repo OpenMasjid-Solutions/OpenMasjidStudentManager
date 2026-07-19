@@ -16,12 +16,15 @@ import './styles/family.css';
 import './lib/i18n';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { prefsStore } from './lib/prefs';
+import { hydrateAppearance } from './lib/appearance';
 import { installCursorFx } from './lib/cursorFx';
 import { trpc, trpcClient, queryClient } from './lib/trpc';
 import { App } from './App';
 
-// Apply saved theme/accent/wallpaper/language before first paint.
+// Apply saved theme/accent/wallpaper/language before first paint, then adopt any OpenMasjidOS
+// appearance hand-off (the #omos fragment on a dashboard "Open") so the app opens on-theme.
 prefsStore.hydrate();
+hydrateAppearance();
 // Pointer-reactive light on glass surfaces (off under reduced-motion / touch).
 installCursorFx();
 

@@ -9,6 +9,7 @@ import { Download, FileText } from 'lucide-react';
 import { staggerContainer, staggerItem } from '../../lib/motion';
 import { trpc } from '../../lib/trpc';
 import { formatMoney } from '../../lib/money';
+import { withBase } from '../../lib/base';
 import { PayNow } from './PayNow';
 import { PayMethods } from './PayMethods';
 
@@ -114,7 +115,7 @@ export function FamilyHome({ onOpenChild }: { onOpenChild: (studentId: string, n
               <div key={c.studentId} style={{ marginBlockEnd: '0.7rem' }}>
                 <div className="row-sub" style={{ fontWeight: 600, marginBlockEnd: '0.4rem' }}>{c.name}</div>
                 {c.reportCards.map((r) => (
-                  <a key={r.id} className="list-row glass" href={`/reports/card/${r.id}`} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>
+                  <a key={r.id} className="list-row glass" href={withBase(`/reports/card/${r.id}`)} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>
                     <span style={{ display: 'inline-flex', color: 'var(--color-primary)' }}><FileText size={18} /></span>
                     <div className="row-main">
                       <span className="row-title">{r.className}</span>
@@ -124,7 +125,7 @@ export function FamilyHome({ onOpenChild }: { onOpenChild: (studentId: string, n
                   </a>
                 ))}
                 {c.transcripts.map((tr) => (
-                  <a key={tr.id} className="list-row glass" href={`/reports/transcript/${tr.id}`} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>
+                  <a key={tr.id} className="list-row glass" href={withBase(`/reports/transcript/${tr.id}`)} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>
                     <span style={{ display: 'inline-flex', color: 'var(--color-gold)' }}><FileText size={18} /></span>
                     <div className="row-main">
                       <span className="row-title">{t('family.transcript')}</span>

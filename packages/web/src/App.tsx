@@ -23,6 +23,8 @@ import { FamilyApp } from './routes/family/FamilyApp';
 import { InviteAccept } from './routes/InviteAccept';
 import { ApplyForm } from './routes/apply/ApplyForm';
 import { trpc } from './lib/trpc';
+import { stripBase } from './lib/base';
+import { useOmosAppearanceSync } from './lib/appearance';
 
 function SetupOnLanNotice() {
   const { t } = useTranslation();
@@ -54,11 +56,14 @@ export function App() {
   const { t } = useTranslation();
   const session = trpc.auth.session.useQuery(undefined, { retry: false });
   const health = trpc.health.useQuery(undefined, { retry: false });
+  // Live-inherit the OS dashboard's wallpaper + light/dark when embedded (linked to the platform).
+  useOmosAppearanceSync(health.data ? !health.data.standalone : false);
   const s = session.data;
 
   // Anonymous portal entry points reached via the emailed invite link / statement QR. These take
   // precedence over the session gate (a parent sets a password here before they have an account).
-  const path = typeof window !== 'undefined' ? window.location.pathname : '/';
+  // stripBase drops the tunnel prefix so "/students/apply" matches "/apply" (§12/§15).
+  const path = stripBase(typeof window !== 'undefined' ? window.location.pathname : '/');
   // The public admissions enquiry form — anonymous, over the tunnel (§4/§14).
   if (path === '/apply') {
     return (

@@ -45,6 +45,20 @@ explaining why.
   (version from `health`). They intentionally diverge, so they carry a normal SPDX header (not
   the verbatim origin comment).
 
+## Adapted from OpenMasjidDonations (the tunnel + appearance family pattern)
+
+These are copied/adapted from the sibling **`OpenMasjid-Solutions/OpenMasjidDonations`** app (same-org
+AGPL), which established the shared pattern for serving one build at the root (LAN) and under an
+OpenMasjidOS Cloudflare-tunnel path, plus inheriting the dashboard's appearance:
+
+- **`src/lib/base.ts`** — runtime base path (`window.__OMOS_BASE__` → `BASE`/`withBase`/`stripBase`),
+  adapted from Donations `web/src/base.ts`. Pairs with Vite `base: './'` + the server-injected
+  `<base href>`.
+- **`src/lib/appearance.ts`** — the CONSUMER side of the OS Fabric appearance layer (the `#omos=`
+  fragment + the same-origin `/api/public/appearance` relay poll), adapted from the appearance-sync
+  in Donations `web/src/prefs.ts`. Kept SEPARATE from the verbatim-ported `src/lib/prefs.ts` so that
+  file stays re-syncable with OpenMasjidOS upstream.
+
 ## Deliberate additions / deviations (NOT from upstream)
 
 - **`public/fonts/Amiri-Regular.ttf`** (+ `LICENSE-Amiri-OFL.txt`) — the OFL **Amiri**

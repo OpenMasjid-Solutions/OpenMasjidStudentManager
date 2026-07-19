@@ -10,6 +10,7 @@ import { randomBytes, createHash } from 'node:crypto';
 import { eq, lt } from 'drizzle-orm';
 import type { CookieSerializeOptions } from '@fastify/cookie';
 import { db } from '../db';
+import { config } from '../config';
 import { sessions, users, type Role, type Session } from '../db/schema';
 import { rid } from '../db/ids';
 
@@ -88,13 +89,20 @@ export function purgeExpiredSessions(): void {
   db.delete(sessions).where(lt(sessions.expiresAt, new Date())).run();
 }
 
+/** The session cookie's Path — scoped to the app's tunnel mount prefix (e.g. "/students") so the
+ *  token is NEVER sent to sibling apps sharing the OS Cloudflare-tunnel domain (/donations, /kiosk…);
+ *  "/" when served at the root (standalone / LAN own-port). Every authenticated request rides the
+ *  server-injected `<base href>`, so it always lands under this prefix in all three modes. Set + clear
+ *  MUST use the same value (RFC 6265 path-match), hence one shared constant (§14 defense-in-depth). */
+export const COOKIE_PATH = config.basePath || '/';
+
 /** Cookie options. `secure` reflects whether the browser hop is HTTPS (§ origin.ts). */
 export function cookieOptions(secure: boolean, ttlMs = SESSION_TTL_MS): CookieSerializeOptions {
   return {
     httpOnly: true,
     sameSite: 'lax',
     secure,
-    path: '/',
+    path: COOKIE_PATH,
     maxAge: Math.floor(ttlMs / 1000),
   };
 }

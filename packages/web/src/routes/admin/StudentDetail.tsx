@@ -6,6 +6,7 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { trpc } from '../../lib/trpc';
+import { withBase } from '../../lib/base';
 
 interface StudentLite {
   id: string;
@@ -213,7 +214,7 @@ export function StudentDetail({ student }: { student: StudentLite }) {
                     <td>{fmtDate(tr.generatedAt as unknown as number)}</td>
                     <td>{tr.publishedAt ? <span className="chip is-accent">{t('reports.published')}</span> : <span className="chip is-muted">{t('reports.unpublished')}</span>}</td>
                     <td className="actions">
-                      <a className="btn btn--ghost btn--sm" href={`/reports/transcript/${tr.id}`} target="_blank" rel="noopener noreferrer">{t('reports.download')}</a>
+                      <a className="btn btn--ghost btn--sm" href={withBase(`/reports/transcript/${tr.id}`)} target="_blank" rel="noopener noreferrer">{t('reports.download')}</a>
                       <button type="button" className="btn btn--ghost btn--sm" onClick={() => toggleTranscriptPublish(tr.id, !tr.publishedAt)} disabled={pubTranscript.isPending}>{tr.publishedAt ? t('reports.unpublishAll') : t('reports.publishAll')}</button>
                     </td>
                   </tr>

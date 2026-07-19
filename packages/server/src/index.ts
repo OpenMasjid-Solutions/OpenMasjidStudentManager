@@ -28,6 +28,7 @@ import { registerFabricProvider } from './fabric/provider';
 import { registerStripeWebhook } from './payments/webhook';
 import { loadStripeKeys } from './payments/stripe';
 import { startSchedulers } from './payments/scheduler';
+import { stripBasePath } from './http/basePath';
 
 const log = makeLog('main');
 
@@ -45,6 +46,9 @@ async function main(): Promise<void> {
   void loadStripeKeys(); // best-effort: fetch Stripe keys from the Fabric (no-op standalone / not configured)
   startSchedulers(); // daily autopay run (no-op standalone)
 
+  // The tunnel mount prefix (e.g. "/students"); "" when standalone / served at the root.
+  const BASE = config.basePath;
+
   const app = Fastify({
     logger: false, // we log ourselves and never log secrets (CLAUDE.md §14)
     bodyLimit: 1_048_576, // 1 MiB JSON cap (uploads get their own limit later)
@@ -54,6 +58,14 @@ async function main(): Promise<void> {
     // so raise it. (Caught by driving the student detail in a browser; createCaller tests
     // bypass HTTP and never hit this.)
     maxParamLength: 5000,
+    // Base-path awareness (manifest tunnel: true): when OpenMasjidOS exposes us behind its
+    // Cloudflare tunnel it forwards the FULL admin-chosen path prefix (e.g. /students)
+    // WITHOUT stripping it, so requests arrive as /students/trpc, /students/assets/x,
+    // /students/api/stripe/webhook, etc. We strip it here, before routing, so every route
+    // below stays written at the root and works identically on the LAN (no prefix) and
+    // behind the tunnel. Empty prefix = nothing to strip (standalone). (Mirrors the family
+    // pattern in OpenMasjidDonations.)
+    rewriteUrl: (req) => stripBasePath(req.url ?? '/', BASE),
   });
 
   await app.register(fastifyCookie);
@@ -93,11 +105,45 @@ async function main(): Promise<void> {
   // app's public URL (a path outside /fabric/, so the tunnel lets it through).
   registerStripeWebhook(app);
 
+  // Same-origin appearance relay (CLAUDE.md §15). The parent portal + staff surfaces INHERIT the OS
+  // dashboard's wallpaper + light/dark. The OS exposes GET /api/public/appearance (theme/wallpaper/
+  // accent), but a browser can't fetch it directly: on the LAN it's a different origin + plain HTTP
+  // (mixed content from our HTTPS page), and it isn't our origin over the tunnel. So the browser polls
+  // US (same origin) and we fetch the platform server-to-server. No secrets; open (no auth), like /apply.
+  // A tiny cache so many portal tabs polling every 45s don't each trigger an outbound hop, and a
+  // slow OS response can't pile up. Only successful responses are cached; errors return {} and retry.
+  let appearanceCache: { at: number; body: Record<string, unknown> } | null = null;
+  const APPEARANCE_TTL_MS = 10_000;
+  app.get('/api/public/appearance', async (_req, reply) => {
+    reply.header('cache-control', 'no-store');
+    if (!config.omosBaseUrl) return {}; // standalone — nothing to inherit
+    const now = Date.now();
+    if (appearanceCache && now - appearanceCache.at < APPEARANCE_TTL_MS) return appearanceCache.body;
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 4000);
+    try {
+      const res = await fetch(`${config.omosBaseUrl}/api/public/appearance`, { signal: ctrl.signal, redirect: 'error' });
+      if (!res.ok) return {};
+      const body = (await res.json()) as Record<string, unknown>;
+      appearanceCache = { at: now, body };
+      return body;
+    } catch {
+      return {}; // platform offline / slow — the #omos fragment (if any) already themed us
+    } finally {
+      clearTimeout(t); // clear AFTER the body read so the 4s deadline bounds the whole exchange
+    }
+  });
+
   // Production: serve the built web UI + SPA fallback. In dev, Vite serves the UI
   // (config.publicDir is empty), so this whole block is skipped.
   if (config.publicDir && fs.existsSync(path.join(config.publicDir, 'index.html'))) {
     await app.register(fastifyStatic, { root: config.publicDir, index: false });
-    const rawIndex = fs.readFileSync(path.join(config.publicDir, 'index.html'), 'utf8');
+    // Inject the base path so the relative-built Vite assets (base: './') resolve under the tunnel
+    // prefix, and the client can build prefix-aware API/nav URLs (window.__OMOS_BASE__). Fixed per
+    // deployment (BASE is constant), so we inject once. `<base href="/">` when served at the root.
+    const rawIndex = fs
+      .readFileSync(path.join(config.publicDir, 'index.html'), 'utf8')
+      .replace('<head>', `<head>\n    <base href="${BASE}/">\n    <script>window.__OMOS_BASE__=${JSON.stringify(BASE)}</script>`);
     const sendIndex = (_req: unknown, reply: import('fastify').FastifyReply) =>
       reply.type('text/html').send(rawIndex);
     // Serve the SPA index at the root explicitly — @fastify/static with index:false

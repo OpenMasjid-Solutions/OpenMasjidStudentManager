@@ -7,6 +7,7 @@
  * Standalone (no platform) is a first-class mode: every field below can be empty.
  */
 import path from 'node:path';
+import { basePathFrom } from './http/basePath';
 
 const env = process.env;
 
@@ -16,7 +17,7 @@ function str(v: string | undefined): string {
 
 export const config = {
   /** Kept in step with the repo-root VERSION file + manifest.yaml (CLAUDE.md §19). */
-  version: '0.26.0',
+  version: '0.27.0',
   port: Number(env.PORT) || 8080,
   /** SQLite DB, attachments, and generated report/transcript PDFs live here. */
   dataDir: str(env.DATA_DIR) || path.resolve(process.cwd(), 'data'),
@@ -35,6 +36,13 @@ export const config = {
   schoolName: str(env.SCHOOL_NAME),
   currency: (str(env.CURRENCY) || 'usd').toLowerCase(),
   stripeAccount: str(env.STRIPE_ACCOUNT),
+
+  // The URL-path prefix the OS Cloudflare tunnel serves us under (e.g. "/students"),
+  // derived from the public URL's pathname — the OS forwards the FULL prefix WITHOUT
+  // stripping it, so we strip it ourselves before routing (see index.ts rewriteUrl) and
+  // inject it into the page as `window.__OMOS_BASE__` + a matching `<base href>`. Empty
+  // when standalone / not exposed → the app serves at the root exactly as before.
+  basePath: basePathFrom(str(env.OPENMASJID_PUBLIC_URL)),
 };
 
 /** True when the platform has wired us into the Fabric (base URL + our secret). */

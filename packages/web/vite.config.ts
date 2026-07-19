@@ -8,6 +8,12 @@ import tailwindcss from '@tailwindcss/vite';
 // In production the server serves the built UI itself (same-origin, no proxy).
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  // Relative asset base: the built index.html references assets as ./assets/… so they resolve
+  // against the runtime `<base href>` the server injects. One build then works at the root (LAN)
+  // AND under the OpenMasjidOS tunnel path (e.g. /students) without baking the path in. Dynamic
+  // import() chunks follow via import.meta.url too. Do NOT set an absolute base — it breaks behind
+  // the tunnel. (Matches the family pattern in OpenMasjidDonations.)
+  base: './',
   server: {
     port: 5173,
     proxy: {

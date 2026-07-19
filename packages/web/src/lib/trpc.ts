@@ -9,6 +9,7 @@ import { httpBatchLink } from '@trpc/client';
 import type { inferRouterOutputs } from '@trpc/server';
 import { QueryClient } from '@tanstack/react-query';
 import type { AppRouter } from '@openmasjid/students-server';
+import { withBase } from './base';
 
 export const trpc = createTRPCReact<AppRouter>();
 
@@ -19,7 +20,8 @@ export const queryClient = new QueryClient({
   defaultOptions: { queries: { refetchOnWindowFocus: false } },
 });
 
-// Same-origin in production; Vite proxies /trpc → the server (:8080) in dev.
+// Same-origin in production; Vite proxies /trpc → the server (:8080) in dev. withBase keeps the
+// tunnel prefix (e.g. /students/trpc) when the OS serves us behind its Cloudflare tunnel.
 export const trpcClient = trpc.createClient({
-  links: [httpBatchLink({ url: '/trpc' })],
+  links: [httpBatchLink({ url: withBase('/trpc') })],
 });

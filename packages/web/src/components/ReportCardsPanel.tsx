@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FileText, Download, RefreshCw } from 'lucide-react';
 import { trpc } from '../lib/trpc';
+import { withBase } from '../lib/base';
 
 export function ReportCardsPanel({ classId, canGenerate = false }: { classId: string; canGenerate?: boolean }) {
   const { t } = useTranslation();
@@ -43,7 +44,7 @@ export function ReportCardsPanel({ classId, canGenerate = false }: { classId: st
         <span className="spacer" style={{ flex: 1 }} />
         {canGenerate && <button type="button" className="btn btn--primary btn--sm" onClick={generateAll} disabled={busy || genClass.isPending}><FileText size={15} /> {busy ? t('reports.generating') : t('reports.generateAll')}</button>}
         {canGenerate && anyCards && <button type="button" className="btn btn--ghost btn--sm" onClick={togglePublish} disabled={publish.isPending}>{anyPublished ? t('reports.unpublishAll') : t('reports.publishAll')}</button>}
-        {anyCards && <a className="btn btn--ghost btn--sm" href={`/reports/class/${classId}/combined`} target="_blank" rel="noopener noreferrer"><Download size={15} /> {t('reports.downloadAll')}</a>}
+        {anyCards && <a className="btn btn--ghost btn--sm" href={withBase(`/reports/class/${classId}/combined`)} target="_blank" rel="noopener noreferrer"><Download size={15} /> {t('reports.downloadAll')}</a>}
       </div>
 
       {q.isLoading ? (
@@ -62,7 +63,7 @@ export function ReportCardsPanel({ classId, canGenerate = false }: { classId: st
                   <td>{r.latest ? fmtDate(r.latest.generatedAt) : '—'}</td>
                   <td>{r.latest ? (r.latest.publishedAt ? <span className="chip is-accent">{t('reports.published')}</span> : <span className="chip is-muted">{t('reports.unpublished')}</span>) : '—'}</td>
                   <td className="actions">
-                    {r.latest && <a className="btn btn--ghost btn--sm" href={`/reports/card/${r.latest.id}`} target="_blank" rel="noopener noreferrer" aria-label={t('reports.download')}><Download size={14} /></a>}
+                    {r.latest && <a className="btn btn--ghost btn--sm" href={withBase(`/reports/card/${r.latest.id}`)} target="_blank" rel="noopener noreferrer" aria-label={t('reports.download')}><Download size={14} /></a>}
                     {canGenerate && <button type="button" className="btn btn--ghost btn--sm" onClick={() => regen(r.studentId)} disabled={genStudent.isPending} aria-label={r.latest ? t('reports.regenerate') : t('reports.generate')}><RefreshCw size={14} /></button>}
                   </td>
                 </tr>
