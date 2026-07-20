@@ -21,6 +21,7 @@ import { TeachApp } from './routes/teach/TeachApp';
 import { FinanceApp } from './routes/finance/FinanceApp';
 import { FamilyApp } from './routes/family/FamilyApp';
 import { InviteAccept } from './routes/InviteAccept';
+import { ResetPassword } from './routes/ResetPassword';
 import { ApplyForm } from './routes/apply/ApplyForm';
 import { trpc } from './lib/trpc';
 import { stripBase } from './lib/base';
@@ -71,6 +72,17 @@ export function App() {
         <SceneBackground />
         <ShellControls />
         <div className="auth-wrap"><ApplyForm /></div>
+      </>
+    );
+  }
+  // Password reset (§12): /family/reset — request a link (no token) or set a new password (with ?token=).
+  if (path === '/family/reset') {
+    const token = new URLSearchParams(window.location.search).get('token');
+    return (
+      <>
+        <SceneBackground />
+        <ShellControls />
+        <div className="auth-wrap"><ResetPassword token={token} /></div>
       </>
     );
   }

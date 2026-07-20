@@ -116,3 +116,10 @@ export const applyDailyLimiter = new SubmitLimiter(20, 24 * 60 * 60_000); // 20 
  *  given PIN → that PIN is temporarily locked (and finance is notified). Compensates for the PIN's
  *  low entropy. Keyed by the SUPPLIED pin; a success resets it. */
 export const pinLookupLimiter = new LoginLimiter({ maxFailures: 10, windowMs: 60 * 60_000, blockMs: 60 * 60_000 });
+
+/** Password-reset REQUESTS — per-IP fixed-window cap so the endpoint can't be used to bomb an inbox
+ *  or probe for accounts (§12/§14). Counts every call. */
+export const resetRequestLimiter = new SubmitLimiter(5, 15 * 60_000); // 5 / 15 min
+/** Password-reset CONFIRM — per-IP throttle on token submission, like invite accept (tokens are
+ *  256-bit + unguessable; this just caps hammering). */
+export const resetConfirmLimiter = new LoginLimiter({ maxFailures: 10, windowMs: 15 * 60_000, blockMs: 15 * 60_000 });

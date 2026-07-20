@@ -181,6 +181,21 @@ export const invites = sqliteTable('invites', {
 });
 export type Invite = typeof invites.$inferSelect;
 
+/** Password-reset tokens (CLAUDE.md §12) — like invites but for an EXISTING user. Only the SHA-256
+ *  hash of the CSPRNG token is stored; single-use, short expiry. Reset is offered when SMTP is on
+ *  (email a link); otherwise the office re-invites / an admin sets a temp password. */
+export const passwordResets = sqliteTable('password_resets', {
+  id: text('id').primaryKey(),
+  tokenHash: text('token_hash').notNull().unique(),
+  userId: text('user_id')
+    .notNull()
+    .references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  expiresAt: integer('expires_at', { mode: 'timestamp_ms' }).notNull(),
+  usedAt: integer('used_at', { mode: 'timestamp_ms' }),
+});
+export type PasswordReset = typeof passwordResets.$inferSelect;
+
 /** Extra emergency contacts per family (guardians can also be flagged, above). */
 export const emergencyContacts = sqliteTable(
   'emergency_contacts',

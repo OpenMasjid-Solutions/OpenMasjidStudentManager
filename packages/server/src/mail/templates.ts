@@ -133,6 +133,29 @@ export function autopayFailureEmail(schoolName: string, portalUrl: string, final
   return { subject, text, html };
 }
 
+/** Password reset (§12). */
+export function resetEmail(schoolName: string, url: string): Email {
+  const subject = `Reset your ${schoolName} password`;
+  const text = [
+    'Assalāmu ʿalaykum,',
+    '',
+    `We received a request to reset the password for your ${schoolName} account. Set a new password here:`,
+    url,
+    '',
+    "This link works once and expires in 1 hour. If you didn't ask to reset your password, you can ignore this email — nothing will change.",
+  ].join('\n');
+  const html = shell(
+    'Reset your password',
+    [
+      `We received a request to reset the password for your <strong>${esc(schoolName)}</strong> account.`,
+      'Set a new password:',
+    ],
+    { label: 'Set a new password', url },
+    "This link works once and expires in 1 hour. If you didn't ask to reset your password, ignore this email — nothing will change.",
+  );
+  return { subject, text, html };
+}
+
 /** Admin "send test" probe. */
 export function testEmail(schoolName: string): Email {
   const subject = `${schoolName}: test email`;

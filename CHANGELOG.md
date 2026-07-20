@@ -9,6 +9,23 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.29.0]
+
+### Added
+- **Password reset** (§12) — a **"Forgot password?"** link on the sign-in page. A parent (or staff)
+  enters their email and, when email is set up, gets a one-time link (1-hour expiry) to set a new
+  password at `/family/reset`; completing it signs them out everywhere and they sign in fresh. The
+  request response is always generic — it never reveals whether an email is registered. Without email
+  configured, resets go through the office (an admin sets a temporary password), exactly as before.
+
+### Security / correctness
+- No account-enumeration oracle: the reset request looks the same whether or not the email exists, and
+  no un-deliverable token is minted when email isn't set up.
+- The reset target is resolved **deterministically** — the unique username first (case-insensitive,
+  matching login), then the email address only when it identifies exactly one active account — so a
+  username⇄email collision can never reset the wrong account. Tokens are single-use, hashed at rest,
+  short-lived, and rate-limited on both request and confirm.
+
 ## [0.28.0]
 
 ### Added

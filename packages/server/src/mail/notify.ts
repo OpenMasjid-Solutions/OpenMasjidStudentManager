@@ -9,7 +9,7 @@
 import { getSchoolName } from '../settings';
 import { sendMail, sendMailTo, smtpConfigured } from './smtp';
 import { guardianEmailsForFamily } from './recipients';
-import { inviteEmail, receiptEmail, autopayFailureEmail } from './templates';
+import { inviteEmail, receiptEmail, autopayFailureEmail, resetEmail } from './templates';
 import { portalBase } from '../auth/invites';
 
 function portalHome(): string {
@@ -25,6 +25,14 @@ function portalHome(): string {
 export async function sendInvite(email: string, url: string, guardianName: string): Promise<boolean> {
   if (!smtpConfigured() || !portalBase()) return false;
   const m = inviteEmail(getSchoolName(), guardianName, url);
+  return sendMail({ to: email, subject: m.subject, text: m.text, html: m.html });
+}
+
+/** Email a password-reset link to a user. Requires an absolute base (like invites) so the link is
+ *  clickable; returns true if actually sent. */
+export async function sendReset(email: string, url: string): Promise<boolean> {
+  if (!smtpConfigured() || !portalBase()) return false;
+  const m = resetEmail(getSchoolName(), url);
   return sendMail({ to: email, subject: m.subject, text: m.text, html: m.html });
 }
 

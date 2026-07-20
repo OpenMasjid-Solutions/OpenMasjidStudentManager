@@ -7,6 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { MasjidMark } from '../components/Glyphs';
 import { fadeRise } from '../lib/motion';
 import { trpc } from '../lib/trpc';
+import { withBase } from '../lib/base';
 
 export function Login({ tunnel }: { tunnel?: boolean }) {
   const { t } = useTranslation();
@@ -61,6 +62,10 @@ export function Login({ tunnel }: { tunnel?: boolean }) {
           {login.isPending ? t('auth.working') : t('auth.signIn')}
         </button>
       </form>
+
+      <p className="hint" style={{ textAlign: 'center', marginBlockStart: '1rem' }}>
+        <a href={withBase('/family/reset')}>{t('auth.forgotPassword')}</a>
+      </p>
     </motion.div>
   );
 }

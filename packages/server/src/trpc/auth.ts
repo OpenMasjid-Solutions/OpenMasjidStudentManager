@@ -10,25 +10,28 @@
  */
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
+import { randomBytes } from 'node:crypto';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { router, publicProcedure, protectedProcedure, adminOrFinanceProcedure, auditActor } from './trpc';
 import { db } from '../db';
-import { users, guardians, guardianUsers, invites, type Role } from '../db/schema';
+import { users, guardians, guardianUsers, invites, passwordResets, sessions, type Role } from '../db/schema';
 import { rid } from '../db/ids';
 import { hashPassword, verifyPassword, dummyHash, MIN_PASSWORD_LENGTH } from '../auth/passwords';
 import { createSession, destroySession, cookieOptions, COOKIE, COOKIE_PATH, SSO_SESSION_TTL_MS, hashToken } from '../auth/sessions';
 import { probePlatformSession } from '../fabric/platform';
 import { fabricConfigured, config } from '../config';
 import { clientIp } from '../security/origin';
-import { loginLimiter, inviteAcceptLimiter } from '../security/rateLimit';
+import { loginLimiter, inviteAcceptLimiter, resetRequestLimiter, resetConfirmLimiter } from '../security/rateLimit';
 import { audit } from '../audit';
-import { mintInvite } from '../auth/invites';
-import { sendInvite } from '../mail/notify';
+import { mintInvite, portalBase } from '../auth/invites';
+import { sendInvite, sendReset } from '../mail/notify';
+import { smtpConfigured } from '../mail/smtp';
 
 const USERNAME = z.string().trim().min(1).max(254); // fits a full email (parent portal logins)
 const PASSWORD = z.string().min(1).max(200);
 const ID = z.string().min(1).max(64);
 const TOKEN = z.string().min(1).max(200);
+const RESET_TTL_MS = 60 * 60 * 1000; // 1 hour (§12) — matches the reset email copy
 
 function hasAnyUser(): boolean {
   return !!db.select({ id: users.id }).from(users).limit(1).get();
@@ -246,5 +249,82 @@ export const authRouter = router({
       const { token } = createSession({ userId, role: 'parent', source: 'local', username: email });
       ctx.res.setCookie(COOKIE, token, cookieOptions(ctx.https));
       return { ok: true as const, role: 'parent' as Role };
+    }),
+
+  /** Request a password reset (§12). ALWAYS returns { ok: true } — no account-enumeration oracle (§14):
+   *  whether or not the email matches, the response + timing are the same. A link is only actually sent
+   *  when it matches an ACTIVE account AND email is set up with an absolute base URL. Rate-limited per
+   *  IP against inbox bombing. Works for any role, but only ever emails the account's own address; the
+   *  reset itself never mints an admin session (admin still logs in LAN-only). */
+  resetRequest: publicProcedure.input(z.object({ email: USERNAME })).mutation(async ({ ctx, input }) => {
+    if (!resetRequestLimiter.allow(clientIp(ctx.req))) throw new TRPCError({ code: 'TOO_MANY_REQUESTS', message: 'Too many requests. Please try again in a little while.' });
+    const email = input.email.trim().toLowerCase();
+    // Resolve the target DETERMINISTICALLY: the UNIQUE username first (case-insensitive, matching
+    // login), then the (non-unique, nullable) email column only when it identifies EXACTLY ONE active
+    // user. An ambiguous email match — or none — resets nothing, so a username⇄email collision can
+    // never reset the wrong account (§14). The response stays generic regardless.
+    let user = db
+      .select({ id: users.id, email: users.email, username: users.username })
+      .from(users)
+      .where(and(eq(users.status, 'active'), sql`lower(${users.username}) = ${email}`))
+      .get();
+    if (!user) {
+      const byEmail = db
+        .select({ id: users.id, email: users.email, username: users.username })
+        .from(users)
+        .where(and(eq(users.status, 'active'), eq(sql`lower(coalesce(${users.email}, ''))`, email)))
+        .all();
+      if (byEmail.length === 1) user = byEmail[0];
+    }
+    // Only mint a token when we can actually deliver it (SMTP + an absolute link) — otherwise the
+    // office handles the reset and no un-deliverable token is left stranded. Response stays generic.
+    if (user && smtpConfigured() && portalBase()) {
+      const token = randomBytes(32).toString('base64url');
+      const ts = new Date();
+      db.insert(passwordResets).values({ id: rid('pwr'), tokenHash: hashToken(token), userId: user.id, createdAt: ts, expiresAt: new Date(ts.getTime() + RESET_TTL_MS) }).run();
+      const to = user.email && user.email.includes('@') ? user.email : user.username;
+      void sendReset(to, `${portalBase()}/family/reset?token=${token}`);
+      audit({ userId: user.id, role: null, name: null }, 'password.reset.request', { entity: 'user', entityId: user.id });
+    }
+    return { ok: true as const };
+  }),
+
+  /** Is a reset token still valid (for the reset page to enable the form)? Uniform on invalid. */
+  resetInfo: publicProcedure.input(z.object({ token: TOKEN })).query(({ input }) => {
+    const r = db.select({ expiresAt: passwordResets.expiresAt }).from(passwordResets).where(and(eq(passwordResets.tokenHash, hashToken(input.token)), isNull(passwordResets.usedAt))).get();
+    return { valid: !!r && r.expiresAt.getTime() > Date.now() };
+  }),
+
+  /** Complete a reset: set the new password, single-use (re-checked in the txn), and sign the user out
+   *  everywhere (kill existing sessions). Does NOT auto-login — they sign in fresh (so admin stays
+   *  LAN-only). Rate-limited per IP. */
+  resetConfirm: publicProcedure
+    .input(z.object({ token: TOKEN, password: z.string().min(MIN_PASSWORD_LENGTH).max(200) }))
+    .mutation(async ({ ctx, input }) => {
+      const key = clientIp(ctx.req);
+      const wait = resetConfirmLimiter.retryAfterMs(key);
+      if (wait > 0) throw new TRPCError({ code: 'TOO_MANY_REQUESTS', message: `Too many attempts. Try again in ${Math.ceil(wait / 1000)}s.` });
+      const r = db.select().from(passwordResets).where(and(eq(passwordResets.tokenHash, hashToken(input.token)), isNull(passwordResets.usedAt))).get();
+      if (!r || r.expiresAt.getTime() <= Date.now()) {
+        resetConfirmLimiter.fail(key);
+        throw new TRPCError({ code: 'BAD_REQUEST', message: 'This reset link is invalid or has expired. Please request a new one.' });
+      }
+      const passwordHash = await hashPassword(input.password); // hash BEFORE the txn (no await inside)
+      const ts = new Date();
+      const ok = db.transaction((tx) => {
+        const live = tx.select({ usedAt: passwordResets.usedAt }).from(passwordResets).where(eq(passwordResets.id, r.id)).get();
+        if (!live || live.usedAt) return false; // re-check single-use atomically (double-submit race)
+        tx.update(users).set({ passwordHash, mustChangePassword: false, updatedAt: ts }).where(eq(users.id, r.userId)).run();
+        tx.update(passwordResets).set({ usedAt: ts }).where(eq(passwordResets.id, r.id)).run();
+        tx.delete(sessions).where(eq(sessions.userId, r.userId)).run(); // sign out everywhere (§14)
+        return true;
+      });
+      if (!ok) {
+        resetConfirmLimiter.fail(key);
+        throw new TRPCError({ code: 'CONFLICT', message: 'This reset link was already used. Please request a new one.' });
+      }
+      resetConfirmLimiter.succeed(key);
+      audit({ userId: r.userId, role: null, name: null }, 'password.reset.confirm', { entity: 'user', entityId: r.userId });
+      return { ok: true as const };
     }),
 });
