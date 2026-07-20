@@ -22,6 +22,7 @@ import { FinanceApp } from './routes/finance/FinanceApp';
 import { FamilyApp } from './routes/family/FamilyApp';
 import { InviteAccept } from './routes/InviteAccept';
 import { ResetPassword } from './routes/ResetPassword';
+import { SelfRegister } from './routes/SelfRegister';
 import { ApplyForm } from './routes/apply/ApplyForm';
 import { trpc } from './lib/trpc';
 import { stripBase } from './lib/base';
@@ -89,7 +90,7 @@ export function App() {
   if (path === '/family/invite' || path === '/family/register') {
     const token = path === '/family/invite' ? new URLSearchParams(window.location.search).get('token') : null;
     let card: React.ReactNode;
-    if (path === '/family/register') card = <NoticeCard title={t('family.registerTitle')} body={t('family.registerUnavailable')} />;
+    if (path === '/family/register') card = <SelfRegister />;
     else if (token) card = <InviteAccept token={token} />;
     else card = <NoticeCard title={t('family.acceptTitle')} body={t('family.inviteInvalid')} />;
     return (

@@ -20,6 +20,7 @@ import { students, families, invoices, payments } from '../db/schema';
 import { config } from '../config';
 import { classifyOrigin } from '../security/origin';
 import { pinLookupLimiter } from '../security/rateLimit';
+import { nameMatches } from '../people/match';
 import { familyBalance, invoiceTotal, invoicePaid, recordPayment } from '../billing/ledger';
 import { formatMoney } from '../db/money';
 import { getSchoolName, getCurrency, getExternalPaymentsEnabled } from '../settings';
@@ -35,17 +36,6 @@ function secretOk(provided: string | undefined): boolean {
   const b = Buffer.from(provided);
   if (a.length !== b.length) return false;
   return timingSafeEqual(a, b);
-}
-
-/** Diacritic/case-insensitive normalization for lenient name matching (§11.2). */
-function norm(s: string): string {
-  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
-}
-/** Every token the caller typed must appear in the registered full name (lenient, §11.2). */
-function nameMatches(typed: string, first: string, last: string): boolean {
-  const full = norm(`${first} ${last}`);
-  const tokens = norm(typed).split(/\s+/).filter(Boolean);
-  return tokens.length > 0 && tokens.every((t) => full.includes(t));
 }
 
 const V = z.literal(1);

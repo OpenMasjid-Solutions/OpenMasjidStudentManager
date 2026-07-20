@@ -13,6 +13,7 @@ export function Login({ tunnel }: { tunnel?: boolean }) {
   const { t } = useTranslation();
   const utils = trpc.useUtils();
   const login = trpc.auth.login.useMutation();
+  const reg = trpc.auth.registerConfig.useQuery(undefined, { retry: false });
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -65,6 +66,12 @@ export function Login({ tunnel }: { tunnel?: boolean }) {
 
       <p className="hint" style={{ textAlign: 'center', marginBlockStart: '1rem' }}>
         <a href={withBase('/family/reset')}>{t('auth.forgotPassword')}</a>
+        {reg.data?.available && (
+          <>
+            {' · '}
+            <a href={withBase('/family/register')}>{t('auth.createAccount')}</a>
+          </>
+        )}
       </p>
     </motion.div>
   );

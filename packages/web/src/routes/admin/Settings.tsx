@@ -33,6 +33,10 @@ export function Settings() {
     await saveSettings.mutateAsync({ meritOnReportCard: !appSettings.data?.meritOnReportCard });
     await utils.settings.get.invalidate();
   }
+  async function toggleSelfReg() {
+    await saveSettings.mutateAsync({ selfRegistration: !appSettings.data?.selfRegistration });
+    await utils.settings.get.invalidate();
+  }
 
   // Email (SMTP) — the password is write-only: never returned by smtpGet; only sent when re-typed.
   const smtp = trpc.settings.smtpGet.useQuery();
@@ -164,6 +168,10 @@ export function Settings() {
             <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginBlockStart: '0.75rem', cursor: 'pointer' }}>
               <input type="checkbox" checked={!!appSettings.data.meritOnReportCard} onChange={toggleMerit} />
               <span>{t('settings.meritOnReportCard')}</span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBlockStart: '0.6rem', cursor: 'pointer' }}>
+              <input type="checkbox" style={{ marginBlockStart: '0.2rem' }} checked={!!appSettings.data.selfRegistration} onChange={toggleSelfReg} />
+              <span>{t('settings.selfRegistration')}<br /><span className="hint">{t('settings.selfRegistrationHint')}</span></span>
             </label>
           </>
         )}

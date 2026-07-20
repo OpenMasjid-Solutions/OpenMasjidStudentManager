@@ -14,18 +14,20 @@ import { randomBytes } from 'node:crypto';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { router, publicProcedure, protectedProcedure, adminOrFinanceProcedure, auditActor } from './trpc';
 import { db } from '../db';
-import { users, guardians, guardianUsers, invites, passwordResets, sessions, type Role } from '../db/schema';
+import { users, guardians, guardianUsers, guardianFamilies, students, invites, passwordResets, sessions, type Role } from '../db/schema';
 import { rid } from '../db/ids';
 import { hashPassword, verifyPassword, dummyHash, MIN_PASSWORD_LENGTH } from '../auth/passwords';
 import { createSession, destroySession, cookieOptions, COOKIE, COOKIE_PATH, SSO_SESSION_TTL_MS, hashToken } from '../auth/sessions';
-import { probePlatformSession } from '../fabric/platform';
+import { probePlatformSession, notifyPlatform } from '../fabric/platform';
 import { fabricConfigured, config } from '../config';
 import { clientIp } from '../security/origin';
-import { loginLimiter, inviteAcceptLimiter, resetRequestLimiter, resetConfirmLimiter } from '../security/rateLimit';
+import { loginLimiter, inviteAcceptLimiter, resetRequestLimiter, resetConfirmLimiter, registerLimiter, pinLookupLimiter } from '../security/rateLimit';
 import { audit } from '../audit';
 import { mintInvite, portalBase } from '../auth/invites';
+import { nameMatches } from '../people/match';
 import { sendInvite, sendReset } from '../mail/notify';
 import { smtpConfigured } from '../mail/smtp';
+import { getSelfRegistrationEnabled } from '../settings';
 
 const USERNAME = z.string().trim().min(1).max(254); // fits a full email (parent portal logins)
 const PASSWORD = z.string().min(1).max(200);
@@ -325,6 +327,57 @@ export const authRouter = router({
       }
       resetConfirmLimiter.succeed(key);
       audit({ userId: r.userId, role: null, name: null }, 'password.reset.confirm', { entity: 'user', entityId: r.userId });
+      return { ok: true as const };
+    }),
+
+  /** Whether the self-registration door is open (for the /family/register page to show the form vs a
+   *  notice). Public. Requires the admin toggle ON, SMTP configured, and an absolute base (the verify
+   *  link is emailed). */
+  registerConfig: publicProcedure.query(() => ({ available: getSelfRegistrationEnabled() && smtpConfigured() && !!portalBase() })),
+
+  /** Self-registration door 2 (§12): a parent proves they belong by a child's name + PIN + a guardian
+   *  email ALREADY on file — all matching the SAME family (a PIN alone is not enough). On a full match
+   *  we email that guardian a portal invite (the verify link IS the invite link). ALWAYS returns
+   *  { ok: true } — never an oracle about which part matched (§14) — and is throttled per IP AND per
+   *  PIN (pinLookupLimiter, shared with the Fabric lookup) since the PIN is low-entropy. */
+  register: publicProcedure
+    .input(z.object({ childName: z.string().trim().min(1).max(120), pin: z.string().trim().min(1).max(20), email: USERNAME }))
+    .mutation(async ({ ctx, input }) => {
+      if (!registerLimiter.allow(clientIp(ctx.req))) throw new TRPCError({ code: 'TOO_MANY_REQUESTS', message: 'Too many attempts. Please try again in a little while.' });
+      // Door closed (toggle off / no SMTP / no public URL) → behave exactly like a non-match.
+      if (!getSelfRegistrationEnabled() || !smtpConfigured() || !portalBase()) return { ok: true as const };
+      const pin = input.pin.trim();
+      const email = input.email.trim().toLowerCase();
+      // A locked PIN behaves as a non-match (no signal it's otherwise valid).
+      if (pinLookupLimiter.retryAfterMs(pin) > 0) return { ok: true as const };
+      const student = db.select({ firstName: students.firstName, lastName: students.lastName, familyId: students.familyId, status: students.status }).from(students).where(eq(students.pin, pin)).get();
+      const nameOk = !!student && student.status === 'active' && nameMatches(input.childName, student.firstName, student.lastName);
+      // The email must belong to a guardian ON THE SAME family.
+      const guardian = nameOk
+        ? db
+            .select({ id: guardians.id })
+            .from(guardians)
+            .innerJoin(guardianFamilies, eq(guardianFamilies.guardianId, guardians.id))
+            .where(and(eq(guardianFamilies.familyId, student!.familyId), eq(sql`lower(coalesce(${guardians.email}, ''))`, email)))
+            .get()
+        : undefined;
+      if (!guardian) {
+        const wasLocked = pinLookupLimiter.retryAfterMs(pin) > 0;
+        pinLookupLimiter.fail(pin);
+        if (!wasLocked && pinLookupLimiter.retryAfterMs(pin) > 0) void notifyPlatform('A self-registration name+PIN lookup was locked after repeated failed attempts.', { title: 'Signup lookup locked', level: 'warn' });
+        return { ok: true as const }; // generic — no enumeration (§14)
+      }
+      pinLookupLimiter.succeed(pin);
+      // Mint + email a portal invite for the matched guardian (the verify link = the invite link). If
+      // that guardian already has an account (mintInvite !ok), we simply send nothing — still generic.
+      // The send is FIRE-AND-FORGET (not awaited) so a full match doesn't take observably longer than
+      // a non-match — otherwise the SMTP round-trip is a timing oracle that leaks a valid name+PIN
+      // (§14). Mirrors resetRequest. The invite row is already minted synchronously above.
+      const inv = mintInvite(guardian.id, null);
+      if (inv.ok) {
+        audit({ userId: null, role: null, name: null }, 'self_register.invite', { entity: 'guardian', entityId: guardian.id });
+        void sendInvite(inv.email, inv.url, inv.guardianName);
+      }
       return { ok: true as const };
     }),
 });

@@ -20,6 +20,7 @@ export const SETTING_KEYS = {
   // DB (the DB file is already a secret, §9) — never logged, never returned to the client.
   stripeAccount: 'stripe_account', // the OS-vault Stripe account id the admin picked for tuition (§10).
   // Empty → fall back to the STRIPE_ACCOUNT manifest default (resolved in payments/stripe.ts).
+  selfRegistration: 'self_registration', // parent self-registration door on/off (§12, default ON).
 } as const;
 
 export function getSetting(key: string): string | null {
@@ -45,6 +46,12 @@ export function getMeritOnReportCard(): boolean {
 /** External (Donations/Kiosk) tuition payments — on unless the admin turned them off. */
 export function getExternalPaymentsEnabled(): boolean {
   return getSetting(SETTING_KEYS.externalPayments) !== '0';
+}
+
+/** Parent self-registration door (§12) — ON unless the admin turned it off. (It's additionally gated
+ *  on SMTP + a public URL at the procedure, since the verify link is emailed.) */
+export function getSelfRegistrationEnabled(): boolean {
+  return getSetting(SETTING_KEYS.selfRegistration) !== '0';
 }
 
 /** Transactional email (SMTP) config — app-owned, in the DB (§4/§10). `pass` is a secret: never log

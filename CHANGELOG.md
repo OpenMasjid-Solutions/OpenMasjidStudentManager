@@ -9,6 +9,22 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.33.0]
+
+### Added
+- **Parents can sign themselves up** (§12) — a **"New here? Create your account"** link on sign-in.
+  A parent enters their **child's name + PIN + an email the office already has on file** (all must
+  match the same family — a PIN alone is never enough), and the app emails that guardian a setup link.
+  Admins can turn this off in **Settings** (default on); it needs email set up, and falls back to
+  office invites when off. The response is always the same generic "check your inbox", so it never
+  reveals whether a child, PIN, or email is on file.
+
+### Security
+- The PIN is protected by a **per-PIN lockout** (shared with the donation/kiosk lookup) **and** a
+  per-IP throttle, and — hardened in review — the setup email is sent **fire-and-forget** so a correct
+  guess can't be told from a wrong one by timing (no PIN-discovery oracle, §14). The setup link only
+  ever goes to the on-file email, so only its owner can complete signup. PINs are never logged.
+
 ## [0.32.0]
 
 ### Changed

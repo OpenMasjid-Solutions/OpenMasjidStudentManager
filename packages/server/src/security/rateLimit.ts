@@ -123,3 +123,7 @@ export const resetRequestLimiter = new SubmitLimiter(5, 15 * 60_000); // 5 / 15 
 /** Password-reset CONFIRM — per-IP throttle on token submission, like invite accept (tokens are
  *  256-bit + unguessable; this just caps hammering). */
 export const resetConfirmLimiter = new LoginLimiter({ maxFailures: 10, windowMs: 15 * 60_000, blockMs: 15 * 60_000 });
+
+/** Parent self-registration — per-IP fixed-window cap (§12/§14): the endpoint takes a name + PIN, so
+ *  it's throttled per IP (on top of the per-PIN lockout that pinLookupLimiter enforces on the PIN). */
+export const registerLimiter = new SubmitLimiter(8, 15 * 60_000); // 8 / 15 min
