@@ -9,6 +9,15 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.31.0]
+
+### Fixed
+- **Accessibility / RTL polish pass** over the newest screens (email settings, password reset,
+  payment sync, saved cards + autopay, payments). The autopay toggle now honors
+  `prefers-reduced-motion` (it still switches, just without the sliding animation). The sweep
+  confirmed the new UI already uses logical (RTL-safe) layout properties, theme tokens (no hardcoded
+  colours), and light/dark throughout.
+
 ## [0.30.0]
 
 ### Added

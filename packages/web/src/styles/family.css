@@ -122,5 +122,10 @@
 .switch input:checked + .switch-track::after { transform: translateX(18px); }
 .switch input:disabled + .switch-track { opacity: 0.5; cursor: not-allowed; }
 [dir="rtl"] .switch input:checked + .switch-track::after { transform: translateX(-18px); }
+/* Honor reduced-motion: the toggle still moves + recolors, just instantly (§18). */
+@media (prefers-reduced-motion: reduce) {
+  .switch-track,
+  .switch-track::after { transition: none; }
+}
 
 /* The anonymous invite-accept / register pages reuse the .auth-card look — no extra CSS. */
