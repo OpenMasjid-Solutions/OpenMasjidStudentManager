@@ -19,6 +19,8 @@ import { audit } from '../audit';
 import { makeLog } from '../logger';
 import { generateUniquePin } from '../billing/pins';
 import { generateForFamily } from '../billing/invoices';
+import { mintInvite } from '../auth/invites';
+import { sendInvite } from '../mail/notify';
 
 const log = makeLog('admissions');
 
@@ -97,7 +99,7 @@ export const admissionsRouter = router({
    *  refuses a row that's already enrolled. Portal invite is sent separately from the family record. */
   enroll: adminOrFinanceProcedure
     .input(z.object({ admissionId: ID, classId: ID, feePlanId: ID.optional(), invoice: z.object({ periodKey: z.string().trim().min(1).max(40), label: z.string().trim().min(1).max(120), dueDate: z.string().max(20).optional() }).optional() }))
-    .mutation(({ ctx, input }) => {
+    .mutation(async ({ ctx, input }) => {
       const adm = db.select().from(admissions).where(eq(admissions.id, input.admissionId)).get();
       if (!adm) throw new TRPCError({ code: 'NOT_FOUND', message: 'Applicant not found.' });
       if (adm.status === 'enrolled') throw new TRPCError({ code: 'CONFLICT', message: 'This applicant is already enrolled.' });
@@ -111,10 +113,10 @@ export const admissionsRouter = router({
       const ts = now();
       const familyId = rid('fam');
       const studentId = rid('stu');
+      const guardianId = rid('grd'); // needed after the txn for the auto-invite
       db.transaction((tx) => {
         tx.insert(families).values({ id: familyId, name: adm.childLastName || adm.guardianName || 'Family', notes: null, status: 'active', discountKind: 'none', discountValue: 0, createdAt: ts, updatedAt: ts }).run();
         tx.insert(students).values({ id: studentId, familyId, firstName: adm.childFirstName, lastName: adm.childLastName, dob: adm.childDob, status: 'active', notes: null, pin, pinUpdatedAt: ts, createdAt: ts, updatedAt: ts }).run();
-        const guardianId = rid('grd');
         tx.insert(guardians).values({ id: guardianId, name: adm.guardianName, phone: adm.guardianPhone, email: adm.guardianEmail, createdAt: ts, updatedAt: ts }).run();
         tx.insert(guardianFamilies).values({ guardianId, familyId, relation: null, isEmergencyContact: false, createdAt: ts }).run();
         const enrId = rid('enr');
@@ -137,6 +139,19 @@ export const admissionsRouter = router({
           log.warn('enroll: first-invoice generation deferred', { admissionId: adm.id, error: (e as Error).message });
         }
       }
-      return { familyId, studentId, pin, invoicePending };
+      // Auto-invite the guardian to the parent portal (§4). Fully best-effort: the enroll is already
+      // committed, so a missing email, a DB hiccup minting the invite, or a failed send must NEVER turn
+      // a successful enroll into an error — the office can always invite later from the family record.
+      let invited = false;
+      try {
+        const inv = mintInvite(guardianId, ctx.session.userId ?? null);
+        if (inv.ok) {
+          audit(auditActor(ctx), 'invite.create', { entity: 'guardian', entityId: guardianId });
+          invited = await sendInvite(inv.email, inv.url, inv.guardianName);
+        }
+      } catch (e) {
+        log.warn('enroll: auto-invite deferred', { admissionId: adm.id, error: (e as Error).message });
+      }
+      return { familyId, studentId, pin, invoicePending, invited };
     }),
 });

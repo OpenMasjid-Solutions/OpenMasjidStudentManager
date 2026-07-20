@@ -1,6 +1,6 @@
 {
   "name": "@openmasjid/students-server",
-  "version": "0.27.0",
+  "version": "0.28.0",
   "private": true,
   "license": "AGPL-3.0-only",
   "type": "commonjs",
@@ -24,6 +24,7 @@
     "croner": "^9.0.0",
     "drizzle-orm": "^0.38.3",
     "fastify": "^5.2.1",
+    "nodemailer": "^6.10.1",
     "qrcode": "^1.5.4",
     "react": "^18.3.1",
     "stripe": "^17.5.0",
@@ -32,6 +33,7 @@
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.10.5",
+    "@types/nodemailer": "^6.4.24",
     "@types/qrcode": "^1.5.5",
     "drizzle-kit": "^0.30.1",
     "tsx": "^4.19.2",

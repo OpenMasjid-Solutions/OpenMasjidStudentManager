@@ -34,6 +34,33 @@ export function Settings() {
     await utils.settings.get.invalidate();
   }
 
+  // Email (SMTP) — the password is write-only: never returned by smtpGet; only sent when re-typed.
+  const smtp = trpc.settings.smtpGet.useQuery();
+  const saveSmtp = trpc.settings.smtpSet.useMutation();
+  const testSmtp = trpc.settings.smtpTest.useMutation();
+  const [smtpForm, setSmtpForm] = useState<{ host: string; port: string; secure: boolean; user: string; from: string; password: string } | null>(null);
+  const [testTo, setTestTo] = useState('');
+  const [smtpMsg, setSmtpMsg] = useState<string | null>(null);
+  const se = smtpForm ?? (smtp.data ? { host: smtp.data.host, port: String(smtp.data.port), secure: smtp.data.secure, user: smtp.data.user, from: smtp.data.from, password: '' } : { host: '', port: '587', secure: false, user: '', from: '', password: '' });
+
+  async function saveSmtpSettings() {
+    const port = parseInt(se.port, 10);
+    if (!se.host.trim() || !se.from.trim() || Number.isNaN(port)) return;
+    await saveSmtp.mutateAsync({ host: se.host.trim(), port, secure: se.secure, user: se.user.trim(), from: se.from.trim(), password: se.password || undefined });
+    await utils.settings.smtpGet.invalidate();
+    setSmtpForm(null);
+    setSmtpMsg(t('settings.smtpSaved'));
+  }
+  async function runSmtpTest() {
+    setSmtpMsg(null);
+    try {
+      await testSmtp.mutateAsync({ to: testTo.trim() });
+      setSmtpMsg(t('settings.smtpTestOk'));
+    } catch (e) {
+      setSmtpMsg((e as Error).message);
+    }
+  }
+
   // Shared comment bank
   const snippets = trpc.comments.list.useQuery();
   const snipCreate = trpc.comments.create.useMutation();
@@ -122,6 +149,29 @@ export function Settings() {
             </label>
           </>
         )}
+      </section>
+
+      {/* Email (SMTP) — optional but recommended: powers parent invites, receipts, and autopay notices. */}
+      <section className="section glass" style={{ padding: '1rem 1.1rem' }}>
+        <div className="section-head"><h2>{t('settings.smtp')}</h2></div>
+        <p className="muted" style={{ fontSize: '0.88rem', marginBlockEnd: '0.75rem' }}>{t('settings.smtpHint')}</p>
+        {smtpMsg && <div className="notice notice--warn" style={{ marginBlockEnd: '0.6rem' }}>{smtpMsg}</div>}
+        <div className="inline-form glass-inset" style={{ marginBlockStart: 0 }}>
+          <div className="field" style={{ flex: '2 1 14rem' }}><label className="label">{t('settings.smtpHost')}</label><input className="input glass-inset" value={se.host} onChange={(e) => setSmtpForm({ ...se, host: e.target.value })} placeholder="smtp.example.org" /></div>
+          <div className="field" style={{ flex: '0 1 6rem' }}><label className="label">{t('settings.smtpPort')}</label><input type="number" className="input glass-inset" value={se.port} onChange={(e) => setSmtpForm({ ...se, port: e.target.value })} /></div>
+          <div className="field" style={{ flex: '1 1 15rem' }}><label className="label">{t('settings.smtpFrom')}</label><input className="input glass-inset" value={se.from} onChange={(e) => setSmtpForm({ ...se, from: e.target.value })} placeholder="School <office@example.org>" /></div>
+          <div className="field" style={{ flex: '1 1 10rem' }}><label className="label">{t('settings.smtpUser')}</label><input className="input glass-inset" value={se.user} onChange={(e) => setSmtpForm({ ...se, user: e.target.value })} autoComplete="off" /></div>
+          <div className="field" style={{ flex: '1 1 10rem' }}><label className="label">{t('settings.smtpPassword')}</label><input type="password" className="input glass-inset" value={se.password} onChange={(e) => setSmtpForm({ ...se, password: e.target.value })} placeholder={smtp.data?.hasPassword ? t('settings.smtpPasswordSet') : ''} autoComplete="new-password" /></div>
+          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', alignSelf: 'center' }}>
+            <input type="checkbox" checked={se.secure} onChange={(e) => setSmtpForm({ ...se, secure: e.target.checked })} />
+            <span>{t('settings.smtpSecure')}</span>
+          </label>
+          <button type="button" className="btn btn--primary" onClick={saveSmtpSettings} disabled={saveSmtp.isPending || !se.host.trim() || !se.from.trim()}>{t('common.save')}</button>
+        </div>
+        <div className="inline-form glass-inset" style={{ marginBlockStart: '0.6rem' }}>
+          <div className="field" style={{ flex: '1 1 14rem' }}><label className="label">{t('settings.smtpTestTo')}</label><input className="input glass-inset" value={testTo} onChange={(e) => setTestTo(e.target.value)} placeholder="you@example.org" /></div>
+          <button type="button" className="btn btn--ghost" onClick={runSmtpTest} disabled={testSmtp.isPending || !testTo.trim() || !smtp.data?.configured}>{testSmtp.isPending ? t('settings.smtpTesting') : t('settings.smtpSendTest')}</button>
+        </div>
       </section>
 
       <section className="section glass" style={{ padding: '1rem 1.1rem' }}>

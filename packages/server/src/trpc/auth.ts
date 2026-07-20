@@ -10,7 +10,6 @@
  */
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { randomBytes } from 'node:crypto';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { router, publicProcedure, protectedProcedure, adminOrFinanceProcedure, auditActor } from './trpc';
 import { db } from '../db';
@@ -23,17 +22,13 @@ import { fabricConfigured, config } from '../config';
 import { clientIp } from '../security/origin';
 import { loginLimiter, inviteAcceptLimiter } from '../security/rateLimit';
 import { audit } from '../audit';
+import { mintInvite } from '../auth/invites';
+import { sendInvite } from '../mail/notify';
 
 const USERNAME = z.string().trim().min(1).max(254); // fits a full email (parent portal logins)
 const PASSWORD = z.string().min(1).max(200);
 const ID = z.string().min(1).max(64);
 const TOKEN = z.string().min(1).max(200);
-const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days (§12)
-
-/** The parent-portal signup/invite base — the tunnel public URL when set, else relative. */
-function portalBase(): string {
-  return config.omosPublicUrl ? config.omosPublicUrl.replace(/\/+$/, '') : '';
-}
 
 function hasAnyUser(): boolean {
   return !!db.select({ id: users.id }).from(users).limit(1).get();
@@ -174,23 +169,24 @@ export const authRouter = router({
   /** finance/admin creates a one-time portal invite for a guardian. Returns the link to share —
    *  emailed once SMTP lands; for now the office copies/prints it. The guardian needs an email
    *  (it becomes their portal login) and must not already have an account. */
-  inviteCreate: adminOrFinanceProcedure.input(z.object({ guardianId: ID })).mutation(({ ctx, input }) => {
-    const g = db.select().from(guardians).where(eq(guardians.id, input.guardianId)).get();
-    if (!g) throw new TRPCError({ code: 'NOT_FOUND', message: 'Guardian not found.' });
-    const email = (g.email ?? '').trim().toLowerCase();
-    if (!email) throw new TRPCError({ code: 'BAD_REQUEST', message: 'Add an email for this guardian before inviting them to the portal.' });
-    if (db.select({ userId: guardianUsers.userId }).from(guardianUsers).where(eq(guardianUsers.guardianId, g.id)).get()) {
-      throw new TRPCError({ code: 'CONFLICT', message: 'This guardian already has a portal account.' });
+  inviteCreate: adminOrFinanceProcedure.input(z.object({ guardianId: ID })).mutation(async ({ ctx, input }) => {
+    const r = mintInvite(input.guardianId, ctx.session.userId ?? null);
+    if (!r.ok) {
+      const msg =
+        r.reason === 'guardian_not_found'
+          ? 'Guardian not found.'
+          : r.reason === 'no_email'
+            ? 'Add an email for this guardian before inviting them to the portal.'
+            : r.reason === 'already_account'
+              ? 'This guardian already has a portal account.'
+              : 'That email is already used by another account.';
+      throw new TRPCError({ code: r.reason === 'guardian_not_found' ? 'NOT_FOUND' : r.reason === 'no_email' ? 'BAD_REQUEST' : 'CONFLICT', message: msg });
     }
-    if (db.select({ id: users.id }).from(users).where(eq(users.username, email)).get()) {
-      throw new TRPCError({ code: 'CONFLICT', message: 'That email is already used by another account.' });
-    }
-    const token = randomBytes(32).toString('base64url');
-    const ts = new Date();
-    db.insert(invites).values({ id: rid('inv'), tokenHash: hashToken(token), guardianId: g.id, createdByUserId: ctx.session.userId ?? null, createdAt: ts, expiresAt: new Date(ts.getTime() + INVITE_TTL_MS) }).run();
-    audit(auditActor(ctx), 'invite.create', { entity: 'guardian', entityId: g.id });
-    // The RAW token rides only in the returned link (never logged), like a session cookie.
-    return { token, url: `${portalBase()}/family/invite?token=${token}`, email, guardianName: g.name };
+    audit(auditActor(ctx), 'invite.create', { entity: 'guardian', entityId: input.guardianId });
+    // Email the link when SMTP is set up; ALWAYS return the link too, so the office can copy/print it
+    // (and so a failed send never blocks the invite) — graceful degradation, §4/§12.
+    const emailed = await sendInvite(r.email, r.url, r.guardianName);
+    return { token: r.token, url: r.url, email: r.email, guardianName: r.guardianName, emailed };
   }),
 
   /** Look up a pending invite (for the accept page to greet the guardian). Uniform invalid

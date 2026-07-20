@@ -12,10 +12,12 @@ import { and, eq, inArray, lte, isNull, or } from 'drizzle-orm';
 import { db } from '../db';
 import { autopayEnrollments, autopayRuns, families, invoices } from '../db/schema';
 import { invoiceTotal, invoicePaid, recordPayment } from '../billing/ledger';
+import { formatMoney } from '../db/money';
 import { getCurrency } from '../settings';
 import { rid } from '../db/ids';
 import { makeLog } from '../logger';
 import { notifyPlatform } from '../fabric/platform';
+import { sendReceipt, sendAutopayFailure } from '../mail/notify';
 import { stripeClient } from './stripe';
 
 const log = makeLog('autopay');
@@ -128,7 +130,10 @@ export async function chargeFamily(familyId: string, amountCents: number, today:
         },
         { userId: null, role: 'autopay', name: 'autopay' },
       );
-      if (!res.duplicate) void notifyPlatform(`A tuition payment of ${(amountCents / 100).toFixed(2)} was received (autopay).`, { title: 'Tuition payment' });
+      if (!res.duplicate) {
+        void notifyPlatform(`A tuition payment of ${(amountCents / 100).toFixed(2)} was received (autopay).`, { title: 'Tuition payment' });
+        void sendReceipt(familyId, formatMoney(amountCents, getCurrency())); // parent receipt (§13.2.5); !duplicate avoids a double with the webhook
+      }
       onAutopaySucceeded(pi.id, runId); // mark the run charged + reset the retry ladder
     }
   } catch (e) {
@@ -192,11 +197,13 @@ function markRunFailed(runId: string, runDate: string): void {
   const failureCount = (enr.failureCount ?? 0) + 1;
   const ts = new Date();
   if (failureCount >= 3) {
-    // Third strike — stop trying, turn autopay off, and tell finance + the parent (email later).
+    // Third strike — stop trying, turn autopay off, and tell finance + the parent.
     db.update(autopayEnrollments).set({ enabled: false, failureCount, nextAttemptAt: null, updatedAt: ts }).where(eq(autopayEnrollments.familyId, run.familyId)).run();
     void notifyPlatform('Autopay was turned off for a family after three failed charge attempts.', { title: 'Autopay disabled', level: 'warn' });
+    void sendAutopayFailure(run.familyId, true); // parent: autopay is now off — pay now + update card (§13.3)
   } else {
     // Retry on day +2 (after the 1st failure) then day +5 (after the 2nd).
     db.update(autopayEnrollments).set({ failureCount, nextAttemptAt: addDays(runDate, failureCount === 1 ? 2 : 3), updatedAt: ts }).where(eq(autopayEnrollments.familyId, run.familyId)).run();
+    void sendAutopayFailure(run.familyId, false); // parent: charge failed, we'll retry — or pay now (§13.3)
   }
 }

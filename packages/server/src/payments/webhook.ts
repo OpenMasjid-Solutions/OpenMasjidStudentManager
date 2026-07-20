@@ -15,8 +15,11 @@ import { db } from '../db';
 import { stripeEvents } from '../db/schema';
 import type { PaymentChannel } from '../db/schema';
 import { recordPayment } from '../billing/ledger';
+import { formatMoney } from '../db/money';
+import { getCurrency } from '../settings';
 import { makeLog } from '../logger';
 import { notifyPlatform } from '../fabric/platform';
+import { sendReceipt } from '../mail/notify';
 import { verifierStripe, webhookSecret } from './stripe';
 import { onAutopaySucceeded, onAutopayFailed } from './autopay';
 
@@ -49,9 +52,13 @@ export function handleStripeEvent(event: Stripe.Event): void {
             },
             { userId: null, role: channel, name: channel },
           );
-          // Only notify on a genuinely-new payment — a re-delivery or reconciliation overlap (payment
-          // already recorded via the PI-id idempotency key) must not re-alert finance.
-          if (!res.duplicate) void notifyPlatform(`A tuition payment of ${(amount / 100).toFixed(2)} was received (${channel}).`, { title: 'Tuition payment' });
+          // Only notify + receipt on a genuinely-new payment — a re-delivery or reconciliation
+          // overlap (already recorded via the PI-id idempotency key) must not re-alert or re-receipt.
+          // The !duplicate gate also prevents a double receipt with autopay's synchronous record path.
+          if (!res.duplicate) {
+            void notifyPlatform(`A tuition payment of ${(amount / 100).toFixed(2)} was received (${channel}).`, { title: 'Tuition payment' });
+            void sendReceipt(md.students_family_id, formatMoney(amount, getCurrency())); // §13.2.5 — "payment", never "donation"
+          }
         } catch (e) {
           // A bad allocation etc. shouldn't 500 the webhook (Stripe would retry forever). Log + ack.
           log.error('payment_intent.succeeded → ledger failed', { pi: pi.id, error: (e as Error).message });

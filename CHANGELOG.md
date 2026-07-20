@@ -9,6 +9,29 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.28.0]
+
+### Added
+- **Email (SMTP)** (§4) — an admin **Settings → Email** page (host/port/from/username/password/TLS +
+  a "Send test" button; the password is write-only and never shown again). With email set up, the app
+  now sends, automatically and best-effort:
+  - **Parent-portal invites** — the invite link is emailed to the guardian; the office still gets the
+    copy/print link too (so a failed send never blocks anything). **Admissions one-click enroll now
+    auto-invites** the guardian.
+  - **Payment receipts** — after a portal or autopay card payment, the family's guardians get a receipt
+    (worded "payment", never "donation", §13.2.5). Exactly one receipt per payment.
+  - **Autopay-failure notices** — parents are emailed when a charge fails (with a "pay now / update
+    card" note) and again if autopay is turned off after the third failure.
+- **Graceful degradation** — with no SMTP configured (or no public URL for invite links), everything
+  still works: invites fall back to copy/print links and nothing errors. Email is optional.
+
+### Security / correctness
+- The SMTP password is stored in the app DB (the DB is already a secret, §9) but is **never logged,
+  never returned to the client, and never written to the audit log**; saving other fields without
+  re-typing the password keeps the stored one.
+- Invites are only emailed when an absolute (tunnel) URL exists, so a parent never receives a dead
+  relative link; the office copy/print link (absolute-ized in the browser) is the LAN fallback.
+
 ## [0.27.0]
 
 ### Added
