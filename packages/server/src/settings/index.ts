@@ -18,8 +18,8 @@ export const SETTING_KEYS = {
   reconcileLast: 'stripe_reconcile_last', // JSON summary of the last reconcile run (for the finance UI)
   smtp: 'smtp_config', // JSON blob: transactional email config (§4/§10). The password lives here in the
   // DB (the DB file is already a secret, §9) — never logged, never returned to the client.
-  stripeWebhookSecret: 'stripe_webhook_secret', // §13.4 — the signing secret for OUR webhook endpoint,
-  // auto-created on boot or pasted by the admin. Secret: never logged / never returned to the client.
+  stripeAccount: 'stripe_account', // the OS-vault Stripe account id the admin picked for tuition (§10).
+  // Empty → fall back to the STRIPE_ACCOUNT manifest default (resolved in payments/stripe.ts).
 } as const;
 
 export function getSetting(key: string): string | null {
@@ -75,11 +75,11 @@ export function setSmtp(c: SmtpConfig): void {
   setSetting(SETTING_KEYS.smtp, JSON.stringify(c));
 }
 
-/** The Stripe webhook signing secret for OUR endpoint (§13.4) — auto-created on boot or pasted by the
- *  admin; null when neither. A secret: never logged / never returned to the client. */
-export function getStripeWebhookSecret(): string | null {
-  return getSetting(SETTING_KEYS.stripeWebhookSecret) || null;
+/** The OS-vault Stripe account id the admin chose for tuition, or '' to use the manifest default
+ *  (payments/stripe.ts resolves the fallback). This is an account REFERENCE, not a secret. */
+export function getChosenStripeAccount(): string {
+  return getSetting(SETTING_KEYS.stripeAccount) ?? '';
 }
-export function setStripeWebhookSecret(secret: string): void {
-  setSetting(SETTING_KEYS.stripeWebhookSecret, secret);
+export function setChosenStripeAccount(id: string): void {
+  setSetting(SETTING_KEYS.stripeAccount, id);
 }

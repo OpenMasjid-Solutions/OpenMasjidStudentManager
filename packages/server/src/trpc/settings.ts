@@ -1,15 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 OpenMasjid-Solutions
-/** App settings (admin-only): school name, currency, the report-card merit toggle, and email (SMTP). */
+/** App settings (admin-only): school name, currency, the report-card merit toggle, email (SMTP), and
+ *  the Stripe account (from the OS vault) that tuition charges go through. */
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
+import { isNotNull } from 'drizzle-orm';
 import { router, adminProcedure, auditActor } from './trpc';
-import { SETTING_KEYS, getSchoolName, getCurrency, getMeritOnReportCard, setSetting, getSmtp, setSmtp, getStripeWebhookSecret, setStripeWebhookSecret } from '../settings';
+import { db } from '../db';
+import { families, paymentMethods, autopayEnrollments } from '../db/schema';
+import { SETTING_KEYS, getSchoolName, getCurrency, getMeritOnReportCard, setSetting, getSmtp, setSmtp, getChosenStripeAccount, setChosenStripeAccount } from '../settings';
 import { audit } from '../audit';
 import { verifySmtp, sendMail } from '../mail/smtp';
 import { testEmail } from '../mail/templates';
-import { webhookSecret as fabricWebhookSecret } from '../payments/stripe';
-import { ourWebhookUrl } from '../payments/webhookEndpoint';
+import { stripeReady, stripeAccountId, loadStripeKeys } from '../payments/stripe';
+import { fetchStripeAccounts } from '../fabric/platform';
 
 export const settingsRouter = router({
   get: adminProcedure.query(() => ({
@@ -73,20 +77,30 @@ export const settingsRouter = router({
     return { ok: true as const };
   }),
 
-  // ── Payments: Stripe webhook signing secret (§13.4). Auto-registered on boot when possible; this is
-  // the status + manual-paste fallback. The secret is WRITE-ONLY (never returned).
-  stripeWebhookGet: adminProcedure.query(() => {
-    const stored = !!getStripeWebhookSecret();
-    return {
-      configured: stored || !!fabricWebhookSecret(),
-      source: stored ? ('stored' as const) : fabricWebhookSecret() ? ('platform' as const) : ('none' as const),
-      url: ourWebhookUrl(), // where Stripe should send events (for manual setup); '' when no public URL
-    };
+  // ── Payments: which OS-vault Stripe account tuition charges go through (§10). The account LIST comes
+  // from OpenMasjidOS (id + label only — keys never touch this router); the admin picks one and it
+  // applies immediately (no restart). Card keys stay in server memory (payments/stripe.ts).
+  stripeAccountsGet: adminProcedure.query(async () => {
+    const accounts = await fetchStripeAccounts();
+    return { accounts, chosenId: getChosenStripeAccount(), ready: stripeReady(), activeId: stripeAccountId() };
   }),
-  stripeWebhookSet: adminProcedure.input(z.object({ secret: z.string().trim().min(1).max(255) })).mutation(({ ctx, input }) => {
-    if (!input.secret.startsWith('whsec_')) throw new TRPCError({ code: 'BAD_REQUEST', message: 'A Stripe webhook signing secret starts with "whsec_".' });
-    setStripeWebhookSecret(input.secret);
-    audit(auditActor(ctx), 'settings.stripe.webhook', { entity: 'settings', detail: { source: 'manual' } });
-    return { ok: true as const };
+  stripeAccountSet: adminProcedure.input(z.object({ accountId: z.string().trim().max(120) })).mutation(async ({ ctx, input }) => {
+    const prevActive = stripeAccountId(); // the account currently loaded (null if none)
+    setChosenStripeAccount(input.accountId);
+    const ok = await loadStripeKeys(); // apply the choice now — reload keys for the new account
+    // A successful switch to a DIFFERENT account invalidates every family's saved Stripe state: their
+    // Customer + saved cards live on the OLD account and can't be charged on the new one. Clear them so
+    // pay-now mints a fresh Customer and parents re-add cards; autopay is turned off. The ledger and
+    // payment history are account-agnostic and untouched.
+    let reset = false;
+    if (ok && prevActive && prevActive !== stripeAccountId()) {
+      const ts = new Date();
+      db.update(autopayEnrollments).set({ enabled: false, defaultPmId: null, updatedAt: ts }).run(); // null the FK before deleting PMs
+      db.delete(paymentMethods).run();
+      db.update(families).set({ stripeCustomerId: null, updatedAt: ts }).where(isNotNull(families.stripeCustomerId)).run();
+      reset = true;
+    }
+    audit(auditActor(ctx), 'settings.stripe.account', { entity: 'settings', detail: { accountId: input.accountId, reset } });
+    return { ok, ready: stripeReady(), reset };
   }),
 });

@@ -147,9 +147,29 @@ export async function reconcile(actor: AuditActor): Promise<ReconcileResult> {
     return { ok: true, scanned, recorded, ranAt };
   }
 
-  // Never advance the cursor to/past a PI that errored on record — cap it strictly below the earliest
-  // such PI so it is re-scanned next run (money is never silently skipped, §11.4).
-  const nextCursor = earliestErrored === Infinity ? maxCreated : Math.min(maxCreated, earliestErrored - 1);
+  // Also hold the cursor below any tuition PI still PENDING (async settling / SCA) in this window:
+  // otherwise a later-created SUCCEEDED PI advances the cursor past it, and its eventual success would
+  // never be re-scanned — money silently unbooked. This is load-bearing now the webhook is gone
+  // (reconcile is the sole backstop for a portal pay-now the browser didn't confirm). Best-effort: a
+  // failed pending scan just leaves the cursor at maxCreated (the rare async case → a manual reconcile).
+  let earliestPending = Infinity;
+  try {
+    const pendingQuery = `metadata["purpose"]:"students-billing" AND (status:"processing" OR status:"requires_action") AND created>${since}`;
+    let ppage: string | undefined;
+    for (;;) {
+      const pres = await stripe.paymentIntents.search({ query: pendingQuery, limit: 100, ...(ppage ? { page: ppage } : {}) });
+      for (const p of pres.data) if (p.created < earliestPending) earliestPending = p.created;
+      if (!pres.has_more || !pres.next_page) break;
+      ppage = pres.next_page;
+    }
+  } catch (e) {
+    log.warn('reconcile pending scan failed — cursor not held for pending PIs this run', { error: (e as Error).message });
+  }
+
+  // Never advance the cursor to/past a PI that errored on record OR is still pending — cap it strictly
+  // below the earliest such PI so it is re-scanned once it succeeds (money is never silently skipped, §11.4).
+  const holdBelow = Math.min(earliestErrored, earliestPending);
+  const nextCursor = holdBelow === Infinity ? maxCreated : Math.min(maxCreated, holdBelow - 1);
   setSetting(SETTING_KEYS.reconcileCursor, String(nextCursor));
   setSetting(SETTING_KEYS.reconcileLast, JSON.stringify({ ranAt, scanned, recorded }));
   log.info('reconcile complete', { scanned, recorded });

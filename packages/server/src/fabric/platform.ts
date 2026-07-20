@@ -53,6 +53,40 @@ export async function probePlatformSession(cookieHeader: string | undefined): Pr
  * `{ title?, text (required), level? }` (verified against the platform code). Best-effort: no-op when
  * the platform isn't wired in, never throws. `text` MUST NOT carry PII (never a name+amount pair, §14).
  */
+/** A non-secret reference to a Stripe account in the OS vault, for the in-app picker. */
+export interface StripeAccountRef {
+  id: string;
+  label: string;
+}
+
+/**
+ * List the masjid's Stripe accounts from the OS vault (id + label only, NEVER keys) so the admin can
+ * pick which one tuition charges go through — the recommended pattern that keeps install one-click
+ * (§10). Server→server, fail-soft → [] when the Fabric isn't configured, the platform is unreachable,
+ * or it's an older platform without the endpoint. Never throws.
+ */
+export async function fetchStripeAccounts(): Promise<StripeAccountRef[]> {
+  if (!fabricConfigured()) return [];
+  try {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 4000);
+    const res = await fetch(`${config.omosBaseUrl}/api/fabric/stripe/accounts`, {
+      headers: { 'X-OpenMasjid-App-Secret': config.omosAppSecret },
+      signal: ctrl.signal,
+      redirect: 'error',
+    });
+    clearTimeout(timer);
+    if (!res.ok) return [];
+    const j = (await res.json().catch(() => null)) as { accounts?: unknown } | null;
+    const list = Array.isArray(j?.accounts) ? j!.accounts : [];
+    return list
+      .filter((a): a is Record<string, unknown> => !!a && typeof a === 'object' && typeof (a as { id?: unknown }).id === 'string')
+      .map((a) => ({ id: String(a.id), label: typeof a.label === 'string' && a.label ? a.label.slice(0, 80) : String(a.id) }));
+  } catch {
+    return [];
+  }
+}
+
 export async function notifyPlatform(text: string, opts: { title?: string; level?: 'info' | 'warn' | 'error' } = {}): Promise<void> {
   if (!fabricConfigured()) return;
   try {

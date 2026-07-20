@@ -2,9 +2,10 @@
 // Copyright (C) 2026 OpenMasjid-Solutions
 /**
  * Parent portal — Pay now (CLAUDE.md §13.2). Card data NEVER touches our server: the browser
- * confirms the PaymentIntent with Stripe Elements; our backend only ever sees Stripe ids. The
- * LEDGER truth lands on the webhook, so success is worded softly ("it'll show on your account
- * momentarily"), then we refetch. Shown only when card payments are available (keys loaded).
+ * confirms the PaymentIntent with Stripe Elements; our backend only ever sees Stripe ids. On
+ * success we call confirmPayment (the server retrieves the PI and records it — no webhook); the
+ * daily reconcile is the backstop, so success is worded softly. Shown only when card payments are
+ * available (keys loaded).
  */
 import { useMemo, useState, type FormEvent } from 'react';
 import { loadStripe, type Stripe } from '@stripe/stripe-js';
@@ -39,7 +40,7 @@ export function PayNow({ familyId, owedCents, currency, onPaid }: { familyId: st
     return (
       <div style={{ marginBlockStart: '0.75rem' }}>
         <Elements stripe={intent.stripe} options={{ clientSecret: intent.clientSecret, appearance: { theme: 'night' } }}>
-          <PayForm onPaid={onPaid} />
+          <PayForm familyId={familyId} onPaid={onPaid} />
         </Elements>
       </div>
     );
@@ -63,10 +64,11 @@ export function PayNow({ familyId, owedCents, currency, onPaid }: { familyId: st
   );
 }
 
-function PayForm({ onPaid }: { onPaid: () => void }) {
+function PayForm({ familyId, onPaid }: { familyId: string; onPaid: () => void }) {
   const { t } = useTranslation();
   const stripe = useStripe();
   const elements = useElements();
+  const confirm = trpc.portal.confirmPayment.useMutation();
   const [status, setStatus] = useState<'idle' | 'paying' | 'done' | 'error'>('idle');
   const [error, setError] = useState('');
 
@@ -75,14 +77,23 @@ function PayForm({ onPaid }: { onPaid: () => void }) {
     if (!stripe || !elements) return;
     setStatus('paying');
     setError('');
-    const { error: err } = await stripe.confirmPayment({ elements, redirect: 'if_required' });
+    const { error: err, paymentIntent } = await stripe.confirmPayment({ elements, redirect: 'if_required' });
     if (err) {
       setError(err.message ?? t('family.payError'));
       setStatus('error');
-    } else {
-      setStatus('done');
-      onPaid();
+      return;
     }
+    // Record it server-side on return (no webhook). Best-effort: if this call fails, the daily
+    // reconcile still records the payment — so we always show the soft success.
+    if (paymentIntent?.id) {
+      try {
+        await confirm.mutateAsync({ familyId, paymentIntentId: paymentIntent.id });
+      } catch {
+        /* reconciliation (§11.4) will pick it up */
+      }
+    }
+    setStatus('done');
+    onPaid();
   }
 
   const ok = useMemo(() => !!stripe && !!elements, [stripe, elements]);

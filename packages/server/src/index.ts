@@ -25,9 +25,7 @@ import { registerReportRoutes } from './reports/routes';
 import { registerStatementRoutes } from './billing/statementRoutes';
 import { registerApplyRoute } from './admissions/apply';
 import { registerFabricProvider } from './fabric/provider';
-import { registerStripeWebhook } from './payments/webhook';
 import { loadStripeKeys } from './payments/stripe';
-import { ensureWebhookEndpoint } from './payments/webhookEndpoint';
 import { startSchedulers } from './payments/scheduler';
 import { stripBasePath } from './http/basePath';
 
@@ -44,11 +42,10 @@ async function main(): Promise<void> {
   seedGradingDefaults(); // the three shipped grading scales (idempotent)
   seedMeritDefaults(); // the shipped merit categories (idempotent)
   purgeExpiredSessions();
-  // Best-effort, in the background (never blocks boot): fetch Stripe keys from the Fabric, then, if
-  // we're publicly reachable and have no signing secret yet, auto-register our webhook endpoint (§13.4).
-  void loadStripeKeys()
-    .then(() => ensureWebhookEndpoint())
-    .catch((e) => log.warn('stripe boot setup deferred', { error: (e as Error).message }));
+  // Best-effort (never blocks boot): fetch the chosen account's Stripe keys from the Fabric. There is
+  // NO Stripe webhook — payments record via the Fabric record-payment calls, the portal's
+  // confirm-on-return, autopay's synchronous confirm, and the daily reconciliation (§11.4).
+  void loadStripeKeys();
   startSchedulers(); // daily autopay run + reconciliation (no-op standalone)
 
   // The tunnel mount prefix (e.g. "/students"); "" when standalone / served at the root.
@@ -75,10 +72,10 @@ async function main(): Promise<void> {
 
   await app.register(fastifyCookie);
 
-  // Keep the raw JSON body so a future Stripe webhook route can verify signatures
-  // over the exact bytes; all other JSON routes still get the parsed object.
-  app.addContentTypeParser('application/json', { parseAs: 'string' }, (req, body, done) => {
-    (req as unknown as { rawBody?: string }).rawBody = body as string;
+  // Tolerate an empty JSON body (some clients POST no body) — parse it to `undefined` rather than
+  // erroring; all other JSON routes get the parsed object. (There is no Stripe webhook, so we no
+  // longer need the exact raw bytes for signature verification.)
+  app.addContentTypeParser('application/json', { parseAs: 'string' }, (_req, body, done) => {
     if (!body) return done(null, undefined);
     try {
       done(null, JSON.parse(body as string));
@@ -105,10 +102,6 @@ async function main(): Promise<void> {
 
   // Fabric provider /fabric/billing/* (§11): secret-gated, tunnel-blocked; the students/billing capability.
   registerFabricProvider(app);
-
-  // Stripe webhook intake (§13.4): signature-verified, event-deduped → the ledger. Reachable at the
-  // app's public URL (a path outside /fabric/, so the tunnel lets it through).
-  registerStripeWebhook(app);
 
   // Same-origin appearance relay (CLAUDE.md §15). The parent portal + staff surfaces INHERIT the OS
   // dashboard's wallpaper + light/dark. The OS exposes GET /api/public/appearance (theme/wallpaper/

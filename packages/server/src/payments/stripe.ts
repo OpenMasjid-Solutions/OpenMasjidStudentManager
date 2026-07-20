@@ -2,13 +2,17 @@
 // Copyright (C) 2026 OpenMasjid-Solutions
 /**
  * The ONE Stripe integration point (CLAUDE.md §13.1, §16 — nothing else imports the SDK). Keys are
- * fetched over the Fabric from the OS core (`GET /api/fabric/stripe?account=<STRIPE_ACCOUNT>`), which
- * returns the publishable key (→ browser), the secret key (server memory ONLY — never DB, never logs),
- * and the webhook signing secret. If the platform is unreachable or no account is configured, the
- * payment features report "temporarily unavailable" and everything else keeps working.
+ * fetched over the Fabric from the OS core (`GET /api/fabric/stripe?account=<id>`), which returns the
+ * publishable key (→ browser) and the secret key (server memory ONLY — never DB, never logs). The
+ * account is the one the admin PICKED in-app (Settings → Payments), falling back to the STRIPE_ACCOUNT
+ * manifest default. If the platform is unreachable or no account is chosen, the payment features report
+ * "temporarily unavailable" and everything else keeps working. There is no Stripe webhook — payments
+ * are recorded by the Fabric record-payment calls (donations/kiosk), the portal's confirm-on-return,
+ * autopay's synchronous confirm, and the daily reconciliation (§11.4).
  */
 import Stripe from 'stripe';
 import { config, fabricConfigured } from '../config';
+import { getChosenStripeAccount } from '../settings';
 import { makeLog } from '../logger';
 
 const log = makeLog('stripe');
@@ -17,16 +21,21 @@ interface StripeKeys {
   accountId: string;
   publishableKey: string;
   secretKey: string;
-  webhookSecret: string;
 }
 
 let keys: StripeKeys | null = null;
 let client: Stripe | null = null;
 
-/** (Re)load the configured account's keys from the Fabric. Safe to call on boot + on settings change.
+/** The account to charge tuition through: the admin's in-app choice, else the manifest default. */
+function chosenAccount(): string {
+  return getChosenStripeAccount() || config.stripeAccount;
+}
+
+/** (Re)load the chosen account's keys from the Fabric. Safe to call on boot + on settings change.
  *  Returns true on success. Never throws; never logs key material. */
 export async function loadStripeKeys(): Promise<boolean> {
-  if (!fabricConfigured() || !config.stripeAccount) {
+  const account = chosenAccount();
+  if (!fabricConfigured() || !account) {
     keys = null;
     client = null;
     return false;
@@ -34,7 +43,7 @@ export async function loadStripeKeys(): Promise<boolean> {
   try {
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 5000);
-    const res = await fetch(`${config.omosBaseUrl}/api/fabric/stripe?account=${encodeURIComponent(config.stripeAccount)}`, {
+    const res = await fetch(`${config.omosBaseUrl}/api/fabric/stripe?account=${encodeURIComponent(account)}`, {
       headers: { 'X-OpenMasjid-App-Secret': config.omosAppSecret },
       signal: ctrl.signal,
       redirect: 'error',
@@ -42,22 +51,33 @@ export async function loadStripeKeys(): Promise<boolean> {
     clearTimeout(timer);
     if (!res.ok) {
       log.warn('stripe keys unavailable', { status: res.status });
+      keys = null;
+      client = null;
       return false;
     }
-    const k = (await res.json()) as { id?: string; publishableKey?: string; secretKey?: string; webhookSecret?: string };
-    if (!k.secretKey || !k.publishableKey) return false;
-    keys = { accountId: k.id ?? config.stripeAccount, publishableKey: k.publishableKey, secretKey: k.secretKey, webhookSecret: k.webhookSecret ?? '' };
+    const k = (await res.json()) as { id?: string; publishableKey?: string; secretKey?: string };
+    if (!k.secretKey || !k.publishableKey) {
+      keys = null;
+      client = null;
+      return false;
+    }
+    keys = { accountId: k.id ?? account, publishableKey: k.publishableKey, secretKey: k.secretKey };
     client = new Stripe(keys.secretKey);
     log.info('stripe keys loaded'); // never the keys themselves
     return true;
   } catch {
+    // A thrown reload (network error / 5s timeout / bad body) must NOT leave the PREVIOUS account's
+    // client live — otherwise a failed account switch silently keeps charging the old account. Clear
+    // it (like every deliberate failure branch above); payments show "temporarily unavailable".
+    keys = null;
+    client = null;
     return false;
   }
 }
 
 /** For tests / offline: inject keys + a client directly (never used in production). */
-export function _setStripeForTest(k: { publishableKey?: string; secretKey?: string; webhookSecret?: string; accountId?: string }, c?: Stripe): void {
-  keys = { accountId: k.accountId ?? 'acct_test', publishableKey: k.publishableKey ?? 'pk_test', secretKey: k.secretKey ?? 'sk_test', webhookSecret: k.webhookSecret ?? '' };
+export function _setStripeForTest(k: { publishableKey?: string; secretKey?: string; accountId?: string }, c?: Stripe): void {
+  keys = { accountId: k.accountId ?? 'acct_test', publishableKey: k.publishableKey ?? 'pk_test', secretKey: k.secretKey ?? 'sk_test' };
   client = c ?? new Stripe(keys.secretKey);
 }
 
@@ -70,15 +90,6 @@ export function stripeReady(): boolean {
 export function publishableKey(): string | null {
   return keys?.publishableKey ?? null;
 }
-export function webhookSecret(): string | null {
-  return keys?.webhookSecret || null;
-}
 export function stripeAccountId(): string | null {
   return keys?.accountId ?? null;
-}
-
-/** A bare Stripe instance usable for signature verification even before keys load (constructEvent is
- *  local crypto, no API call). Prefer the real client when present. */
-export function verifierStripe(): Stripe {
-  return client ?? new Stripe('sk_local_verify_only');
 }

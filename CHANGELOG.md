@@ -9,6 +9,29 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.32.0]
+
+### Changed
+- **Payments settings are now a Stripe-account picker, not a webhook form.** The admin chooses which
+  of the masjid's **OpenMasjidOS Stripe accounts** tuition is collected into (a dropdown), and that one
+  account is used everywhere — parent-portal pay-now, autopay, and the **`tuition` campaign type on the
+  donation site and kiosk** (which this app fully drives over the Fabric). Only the account id + label
+  ever leave the platform; keys stay in server memory.
+- **Removed all Stripe-webhook machinery** (no endpoint, no auto-registration, no signing secret to
+  manage). Payments are recorded by: the Fabric record-payment calls (donations/kiosk), the portal's
+  **confirm-on-return** (the app retrieves the PaymentIntent after the parent pays and records it), and
+  autopay's synchronous confirm — with the **daily reconciliation** as the catch-all. Nothing to
+  configure.
+
+### Security / correctness (hardening from the step review)
+- A **failed account switch never leaves the old account's keys live** — `loadStripeKeys` clears its
+  cached client on any error, so charges can't silently route to the wrong Stripe account.
+- **Switching the tuition account resets stale per-family Stripe state** — saved cards + Customers live
+  on the old account, so they're cleared and autopay is turned off (parents re-add a card on the new
+  account); the ledger and payment history are untouched.
+- **Reconciliation holds its cursor below any still-pending PI**, so a payment that settles after a
+  later one can never be skipped — important now that reconcile is the sole backstop.
+
 ## [0.31.0]
 
 ### Fixed

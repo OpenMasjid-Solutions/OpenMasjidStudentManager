@@ -13,10 +13,13 @@ import { and, eq, asc, desc, inArray } from 'drizzle-orm';
 import { router, parentProcedure } from './trpc';
 import { db } from '../db';
 import { families, students, invoices, payments, reportCards, transcripts, classes, classSessions, enrollments, gradeItems, grades, attendance, meritAwards, meritCategories, paymentMethods, autopayEnrollments } from '../db/schema';
-import { familyBalance, invoiceTotal, invoicePaid } from '../billing/ledger';
+import { familyBalance, invoiceTotal, invoicePaid, recordPayment } from '../billing/ledger';
+import { formatMoney } from '../db/money';
 import { getCurrency } from '../settings';
 import { parentFamilyIds, parentStudentIds, assertStudentAccess, assertFamilyAccess } from './familyAccess';
 import { stripeClient, stripeReady, publishableKey } from '../payments/stripe';
+import { notifyPlatform } from '../fabric/platform';
+import { sendReceipt } from '../mail/notify';
 import { makeLog } from '../logger';
 
 const payLog = makeLog('portal');
@@ -157,8 +160,8 @@ export const portalRouter = router({
   payConfig: parentProcedure.query(() => ({ ready: stripeReady(), publishableKey: publishableKey(), currency: getCurrency() })),
 
   /** Create a PaymentIntent for a chosen amount against one of the parent's families (§13.2). Card
-   *  data never touches our server — the browser confirms with Elements. The LEDGER truth lands on
-   *  the webhook (channel `portal`, idempotency = PI id); this just mints the intent. */
+   *  data never touches our server — the browser confirms with Elements, then calls confirmPayment
+   *  (below) which records it. This just mints the intent against the admin-chosen Stripe account. */
   createPayment: parentProcedure.input(z.object({ familyId: z.string().min(1).max(64), amountCents: z.number().int().min(100).max(100_000_000) })).mutation(async ({ ctx, input }) => {
     assertFamilyAccess(ctx, input.familyId);
     const stripe = stripeClient();
@@ -188,6 +191,41 @@ export const portalRouter = router({
       payLog.error('createPayment failed', { familyId: fam.id, error: (e as Error).message });
       throw new TRPCError({ code: 'BAD_GATEWAY', message: 'We couldn’t start your payment just now. Please try again in a moment.' });
     }
+  }),
+
+  /** Confirm a portal pay-now on return (§13.2 — NO webhook): retrieve the PI from Stripe, verify it's
+   *  OURS and belongs to THIS family, and record it to the ledger if it succeeded. Idempotent
+   *  (idempotency key = the PI id); the daily reconciliation (§11.4) is the backstop if the browser
+   *  never calls this (e.g. the tab was closed). */
+  confirmPayment: parentProcedure.input(z.object({ familyId: z.string().min(1).max(64), paymentIntentId: z.string().min(1).max(255) })).mutation(async ({ ctx, input }) => {
+    assertFamilyAccess(ctx, input.familyId);
+    const stripe = stripeClient();
+    if (!stripe) throw new TRPCError({ code: 'PRECONDITION_FAILED', message: 'Card payments are temporarily unavailable.' });
+    let pi: import('stripe').Stripe.PaymentIntent;
+    try {
+      pi = await stripe.paymentIntents.retrieve(input.paymentIntentId);
+    } catch (e) {
+      payLog.error('confirmPayment retrieve failed', { familyId: input.familyId, error: (e as Error).message });
+      throw new TRPCError({ code: 'BAD_GATEWAY', message: 'We couldn’t confirm your payment just now — it’ll appear on your account shortly.' });
+    }
+    const md = (pi.metadata ?? {}) as Record<string, string>;
+    // Must be OUR portal intent for THIS family — a parent can never confirm another family's PI (§14).
+    if (md.purpose !== 'students-billing' || md.omos_app !== 'students-portal' || md.students_family_id !== input.familyId) {
+      throw new TRPCError({ code: 'NOT_FOUND', message: 'Payment not found.' });
+    }
+    const succeeded = pi.status === 'succeeded';
+    if (succeeded) {
+      const amount = pi.amount_received || pi.amount || 0;
+      const res = recordPayment(
+        { familyId: input.familyId, amountCents: amount, channel: 'portal', occurredAt: new Date(), idempotencyKey: pi.id, memo: null, externalRef: { stripePaymentIntentId: pi.id, stripeChargeId: (pi.latest_charge as string) ?? null } },
+        { userId: ctx.session.userId ?? null, role: 'portal', name: 'portal' },
+      );
+      if (!res.duplicate) {
+        void notifyPlatform(`A tuition payment of ${(amount / 100).toFixed(2)} was received (portal).`, { title: 'Tuition payment' });
+        void sendReceipt(input.familyId, formatMoney(amount, getCurrency())); // §13.2.5 — "payment", never "donation"
+      }
+    }
+    return { status: pi.status, recorded: succeeded };
   }),
 
   /** Saved cards + autopay state for a family (§13.3). */

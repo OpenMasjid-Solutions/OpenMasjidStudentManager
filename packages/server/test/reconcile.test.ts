@@ -73,12 +73,16 @@ describe('reconcile — not configured', () => {
 });
 
 describe('reconcile — with mocked Stripe search', () => {
-  let searchImpl: () => { data: FakePI[]; has_more: boolean; next_page: string | null } = () => ({ data: [], has_more: false, next_page: null });
+  const empty = () => ({ data: [] as FakePI[], has_more: false, next_page: null });
+  let searchImpl: () => { data: FakePI[]; has_more: boolean; next_page: string | null } = empty;
+  let pendingImpl: () => { data: FakePI[]; has_more: boolean; next_page: string | null } = empty; // the cursor-hold pending scan
   let searchCalls = 0;
   const fakeStripe = {
     paymentIntents: {
-      search: async () => {
+      search: async (args: { query?: string }) => {
         searchCalls++;
+        // reconcile runs two searches: the succeeded scan and a pending-PI scan (to hold the cursor).
+        if (args?.query && /processing|requires_action/.test(args.query)) return pendingImpl();
         return searchImpl();
       },
     },
@@ -87,7 +91,8 @@ describe('reconcile — with mocked Stripe search', () => {
   beforeAll(() => stripeMod._setStripeForTest({}, fakeStripe as unknown as Stripe));
   beforeEach(() => {
     searchCalls = 0;
-    searchImpl = () => ({ data: [], has_more: false, next_page: null });
+    searchImpl = empty;
+    pendingImpl = empty;
   });
 
   it('records a missed donations-web payment, flagged via reconciliation', async () => {
@@ -134,11 +139,21 @@ describe('reconcile — with mocked Stripe search', () => {
         ? { data: [pi({ id: 'pi_p1', metadata: { purpose: 'students-billing', omos_app: 'kiosk', students_family_id: familyId } })], has_more: true, next_page: 'pg2' }
         : { data: [pi({ id: 'pi_p2', metadata: { purpose: 'students-billing', omos_app: 'donations', students_family_id: familyId } })], has_more: false, next_page: null };
     const r = await recon.reconcile(sysActor);
-    expect(searchCalls).toBe(2);
+    expect(searchCalls).toBe(3); // 2 succeeded pages + 1 pending-PI scan (cursor hold)
     expect(r).toMatchObject({ scanned: 2, recorded: 2 });
   });
 
   const cursorVal = () => app.dbmod.db.select().from(settings).where(eq(settings.key, 'stripe_reconcile_cursor')).get()?.value;
+
+  it('holds the cursor below a still-pending PI so its later success is never skipped', async () => {
+    const familyId = await familyWithInvoice();
+    app.dbmod.db.insert(settings).values({ key: 'stripe_reconcile_cursor', value: '1', updatedAt: new Date() }).run();
+    // A succeeded PI (created 200, recorded) + a still-processing PI (created 100) in the same window.
+    searchImpl = () => ({ data: [pi({ id: 'pi_ok', created: 200, metadata: { purpose: 'students-billing', omos_app: 'donations', students_family_id: familyId } })], has_more: false, next_page: null });
+    pendingImpl = () => ({ data: [pi({ id: 'pi_pending', created: 100, status: 'processing', metadata: { purpose: 'students-billing', omos_app: 'students-portal', students_channel: 'portal', students_family_id: familyId } })], has_more: false, next_page: null });
+    await recon.reconcile(sysActor);
+    expect(cursorVal()).toBe('99'); // held below the pending PI (created 100), NOT advanced to 200
+  });
 
   it('holds the cursor below a PI that errored on record, then re-records it next run (no money loss)', async () => {
     const familyId = await familyWithInvoice(20000);

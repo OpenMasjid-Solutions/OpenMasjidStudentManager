@@ -61,20 +61,21 @@ export function Settings() {
     }
   }
 
-  // Payments — Stripe webhook signing secret (§13.4): status + manual-paste fallback.
-  const stripeWebhook = trpc.settings.stripeWebhookGet.useQuery();
-  const saveWebhook = trpc.settings.stripeWebhookSet.useMutation();
-  const [whSecret, setWhSecret] = useState('');
-  const [whMsg, setWhMsg] = useState<string | null>(null);
-  async function saveWebhookSecret() {
-    setWhMsg(null);
+  // Payments — pick which OpenMasjidOS Stripe account tuition charges go through (§10).
+  const stripeAccounts = trpc.settings.stripeAccountsGet.useQuery();
+  const saveStripeAccount = trpc.settings.stripeAccountSet.useMutation();
+  const [acctId, setAcctId] = useState<string | null>(null);
+  const [acctMsg, setAcctMsg] = useState<string | null>(null);
+  const chosenAcct = acctId ?? stripeAccounts.data?.chosenId ?? '';
+  async function saveTuitionAccount() {
+    setAcctMsg(null);
     try {
-      await saveWebhook.mutateAsync({ secret: whSecret.trim() });
-      setWhSecret('');
-      setWhMsg(t('settings.webhookSaved'));
-      await utils.settings.stripeWebhookGet.invalidate();
+      const r = await saveStripeAccount.mutateAsync({ accountId: chosenAcct });
+      setAcctMsg(r.ready ? t('settings.paymentsReady') : t('settings.paymentsNotReady'));
+      setAcctId(null);
+      await utils.settings.stripeAccountsGet.invalidate();
     } catch (e) {
-      setWhMsg((e as Error).message);
+      setAcctMsg((e as Error).message);
     }
   }
 
@@ -191,24 +192,30 @@ export function Settings() {
         </div>
       </section>
 
-      {/* Payments — Stripe webhook (auto-registered when possible; this is the status + manual fallback). */}
+      {/* Payments — choose which OpenMasjidOS Stripe account tuition (portal, donations, kiosk) uses. */}
       <section className="section glass" style={{ padding: '1rem 1.1rem' }}>
         <div className="section-head"><h2>{t('settings.payments')}</h2></div>
         <p className="muted" style={{ fontSize: '0.88rem', marginBlockEnd: '0.75rem' }}>{t('settings.paymentsHint')}</p>
-        {whMsg && <div className="notice notice--warn" style={{ marginBlockEnd: '0.6rem' }}>{whMsg}</div>}
-        <p className="muted" style={{ fontSize: '0.9rem', marginBlockEnd: '0.5rem' }}>
-          {stripeWebhook.data?.configured ? t(stripeWebhook.data.source === 'platform' ? 'settings.webhookOkPlatform' : 'settings.webhookOk') : t('settings.webhookNone')}
-        </p>
-        {stripeWebhook.data?.url && (
-          <div className="field" style={{ marginBlockEnd: '0.5rem' }}>
-            <label className="label">{t('settings.webhookUrl')}</label>
-            <input className="input glass-inset" readOnly value={stripeWebhook.data.url} onFocus={(e) => e.currentTarget.select()} />
-          </div>
+        {acctMsg && <div className="notice notice--warn" style={{ marginBlockEnd: '0.6rem' }}>{acctMsg}</div>}
+        {(stripeAccounts.data?.accounts.length ?? 0) === 0 ? (
+          <p className="muted" style={{ fontSize: '0.9rem' }}>{t('settings.paymentsNoAccounts')}</p>
+        ) : (
+          <>
+            <div className="inline-form glass-inset" style={{ marginBlockStart: 0 }}>
+              <div className="field" style={{ flex: '1 1 18rem' }}>
+                <label className="label">{t('settings.paymentsAccount')}</label>
+                <select className="input glass-inset" value={chosenAcct} onChange={(e) => setAcctId(e.target.value)}>
+                  <option value="">{t('settings.paymentsChoose')}</option>
+                  {stripeAccounts.data?.accounts.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
+                </select>
+              </div>
+              <button type="button" className="btn btn--primary" onClick={saveTuitionAccount} disabled={saveStripeAccount.isPending || !chosenAcct}>{t('common.save')}</button>
+            </div>
+            <p className="muted" style={{ fontSize: '0.85rem', marginBlockStart: '0.5rem' }}>
+              {stripeAccounts.data?.ready ? t('settings.paymentsReady') : t('settings.paymentsNotReady')}
+            </p>
+          </>
         )}
-        <div className="inline-form glass-inset" style={{ marginBlockStart: 0 }}>
-          <div className="field" style={{ flex: '1 1 16rem' }}><label className="label">{t('settings.webhookSecret')}</label><input type="password" className="input glass-inset" value={whSecret} onChange={(e) => setWhSecret(e.target.value)} placeholder="whsec_…" autoComplete="off" /></div>
-          <button type="button" className="btn btn--primary" onClick={saveWebhookSecret} disabled={saveWebhook.isPending || !whSecret.trim()}>{t('common.save')}</button>
-        </div>
       </section>
 
       <section className="section glass" style={{ padding: '1rem 1.1rem' }}>
