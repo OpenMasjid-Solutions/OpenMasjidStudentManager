@@ -21,6 +21,7 @@ import { makeLog } from '../logger';
 import { notifyPlatform } from '../fabric/platform';
 import { sendReceipt } from '../mail/notify';
 import { verifierStripe, webhookSecret } from './stripe';
+import { getStripeWebhookSecret } from '../settings';
 import { onAutopaySucceeded, onAutopayFailed } from './autopay';
 
 const log = makeLog('stripe-webhook');
@@ -84,7 +85,9 @@ export function handleStripeEvent(event: Stripe.Event): void {
 
 export function registerStripeWebhook(app: FastifyInstance): void {
   app.post('/api/stripe/webhook', async (req: FastifyRequest, reply: FastifyReply) => {
-    const secret = webhookSecret();
+    // Prefer OUR endpoint's signing secret (auto-created §13.4 / pasted by the admin); fall back to the
+    // one the OS Fabric provides (when the admin configured the webhook there instead).
+    const secret = getStripeWebhookSecret() || webhookSecret();
     const sig = req.headers['stripe-signature'];
     const raw = (req as unknown as { rawBody?: string }).rawBody;
     if (!secret || !sig || typeof raw !== 'string') {

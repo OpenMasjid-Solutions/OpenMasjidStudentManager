@@ -9,6 +9,22 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.30.0]
+
+### Added
+- **Stripe webhook auto-setup** (§13.4) — when the masjid is online (has a public URL) and Stripe is
+  configured, the app now **registers its own Stripe webhook endpoint on boot** and stores the signing
+  secret, so card-payment confirmations arrive instantly with no manual Stripe configuration. It's
+  idempotent (an endpoint already at our URL is reclaimed, never duplicated) and best-effort (a failure
+  never blocks startup — the daily reconcile still recovers any missed payment).
+- **Settings → Payments** — shows whether the webhook is set up (automatically, via OpenMasjidOS, or
+  not yet), the webhook URL for manual setup, and a field to **paste a signing secret by hand** as a
+  fallback. Inbound webhooks verify against the stored secret first, then the platform's.
+
+### Security
+- The webhook signing secret is stored in the app DB (already a secret, §9) and is **never logged or
+  returned to the client**; the manual-paste field validates the `whsec_` prefix and is admin-only.
+
 ## [0.29.0]
 
 ### Added

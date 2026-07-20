@@ -61,6 +61,23 @@ export function Settings() {
     }
   }
 
+  // Payments — Stripe webhook signing secret (§13.4): status + manual-paste fallback.
+  const stripeWebhook = trpc.settings.stripeWebhookGet.useQuery();
+  const saveWebhook = trpc.settings.stripeWebhookSet.useMutation();
+  const [whSecret, setWhSecret] = useState('');
+  const [whMsg, setWhMsg] = useState<string | null>(null);
+  async function saveWebhookSecret() {
+    setWhMsg(null);
+    try {
+      await saveWebhook.mutateAsync({ secret: whSecret.trim() });
+      setWhSecret('');
+      setWhMsg(t('settings.webhookSaved'));
+      await utils.settings.stripeWebhookGet.invalidate();
+    } catch (e) {
+      setWhMsg((e as Error).message);
+    }
+  }
+
   // Shared comment bank
   const snippets = trpc.comments.list.useQuery();
   const snipCreate = trpc.comments.create.useMutation();
@@ -171,6 +188,26 @@ export function Settings() {
         <div className="inline-form glass-inset" style={{ marginBlockStart: '0.6rem' }}>
           <div className="field" style={{ flex: '1 1 14rem' }}><label className="label">{t('settings.smtpTestTo')}</label><input className="input glass-inset" value={testTo} onChange={(e) => setTestTo(e.target.value)} placeholder="you@example.org" /></div>
           <button type="button" className="btn btn--ghost" onClick={runSmtpTest} disabled={testSmtp.isPending || !testTo.trim() || !smtp.data?.configured}>{testSmtp.isPending ? t('settings.smtpTesting') : t('settings.smtpSendTest')}</button>
+        </div>
+      </section>
+
+      {/* Payments — Stripe webhook (auto-registered when possible; this is the status + manual fallback). */}
+      <section className="section glass" style={{ padding: '1rem 1.1rem' }}>
+        <div className="section-head"><h2>{t('settings.payments')}</h2></div>
+        <p className="muted" style={{ fontSize: '0.88rem', marginBlockEnd: '0.75rem' }}>{t('settings.paymentsHint')}</p>
+        {whMsg && <div className="notice notice--warn" style={{ marginBlockEnd: '0.6rem' }}>{whMsg}</div>}
+        <p className="muted" style={{ fontSize: '0.9rem', marginBlockEnd: '0.5rem' }}>
+          {stripeWebhook.data?.configured ? t(stripeWebhook.data.source === 'platform' ? 'settings.webhookOkPlatform' : 'settings.webhookOk') : t('settings.webhookNone')}
+        </p>
+        {stripeWebhook.data?.url && (
+          <div className="field" style={{ marginBlockEnd: '0.5rem' }}>
+            <label className="label">{t('settings.webhookUrl')}</label>
+            <input className="input glass-inset" readOnly value={stripeWebhook.data.url} onFocus={(e) => e.currentTarget.select()} />
+          </div>
+        )}
+        <div className="inline-form glass-inset" style={{ marginBlockStart: 0 }}>
+          <div className="field" style={{ flex: '1 1 16rem' }}><label className="label">{t('settings.webhookSecret')}</label><input type="password" className="input glass-inset" value={whSecret} onChange={(e) => setWhSecret(e.target.value)} placeholder="whsec_…" autoComplete="off" /></div>
+          <button type="button" className="btn btn--primary" onClick={saveWebhookSecret} disabled={saveWebhook.isPending || !whSecret.trim()}>{t('common.save')}</button>
         </div>
       </section>
 

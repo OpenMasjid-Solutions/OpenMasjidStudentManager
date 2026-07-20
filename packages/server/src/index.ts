@@ -27,6 +27,7 @@ import { registerApplyRoute } from './admissions/apply';
 import { registerFabricProvider } from './fabric/provider';
 import { registerStripeWebhook } from './payments/webhook';
 import { loadStripeKeys } from './payments/stripe';
+import { ensureWebhookEndpoint } from './payments/webhookEndpoint';
 import { startSchedulers } from './payments/scheduler';
 import { stripBasePath } from './http/basePath';
 
@@ -43,8 +44,12 @@ async function main(): Promise<void> {
   seedGradingDefaults(); // the three shipped grading scales (idempotent)
   seedMeritDefaults(); // the shipped merit categories (idempotent)
   purgeExpiredSessions();
-  void loadStripeKeys(); // best-effort: fetch Stripe keys from the Fabric (no-op standalone / not configured)
-  startSchedulers(); // daily autopay run (no-op standalone)
+  // Best-effort, in the background (never blocks boot): fetch Stripe keys from the Fabric, then, if
+  // we're publicly reachable and have no signing secret yet, auto-register our webhook endpoint (§13.4).
+  void loadStripeKeys()
+    .then(() => ensureWebhookEndpoint())
+    .catch((e) => log.warn('stripe boot setup deferred', { error: (e as Error).message }));
+  startSchedulers(); // daily autopay run + reconciliation (no-op standalone)
 
   // The tunnel mount prefix (e.g. "/students"); "" when standalone / served at the root.
   const BASE = config.basePath;
