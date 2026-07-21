@@ -37,6 +37,10 @@ export function Settings() {
     await saveSettings.mutateAsync({ selfRegistration: !appSettings.data?.selfRegistration });
     await utils.settings.get.invalidate();
   }
+  async function toggleExternalPayments() {
+    await saveSettings.mutateAsync({ externalPayments: !appSettings.data?.externalPayments });
+    await utils.settings.get.invalidate();
+  }
 
   // Email (SMTP) — the password is write-only: never returned by smtpGet; only sent when re-typed.
   const smtp = trpc.settings.smtpGet.useQuery();
@@ -204,6 +208,16 @@ export function Settings() {
       <section className="section glass" style={{ padding: '1rem 1.1rem' }}>
         <div className="section-head"><h2>{t('settings.payments')}</h2></div>
         <p className="muted" style={{ fontSize: '0.88rem', marginBlockEnd: '0.75rem' }}>{t('settings.paymentsHint')}</p>
+
+        {/* Accept tuition via the masjid's donation site + kiosk (drives info.enabled over the Fabric). Charges
+            there use those apps' own Stripe account — independent of the portal account chosen below. */}
+        {appSettings.data && (
+          <label style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', marginBlockEnd: '0.9rem', cursor: 'pointer' }}>
+            <input type="checkbox" style={{ marginBlockStart: '0.2rem' }} checked={!!appSettings.data.externalPayments} onChange={toggleExternalPayments} disabled={saveSettings.isPending} />
+            <span>{t('settings.externalPayments')}<br /><span className="hint">{t('settings.externalPaymentsHint')}</span></span>
+          </label>
+        )}
+
         {acctMsg && <div className="notice notice--warn" style={{ marginBlockEnd: '0.6rem' }}>{acctMsg}</div>}
         {(stripeAccounts.data?.accounts.length ?? 0) === 0 ? (
           <p className="muted" style={{ fontSize: '0.9rem' }}>{t('settings.paymentsNoAccounts')}</p>

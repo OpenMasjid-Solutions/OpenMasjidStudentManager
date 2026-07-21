@@ -9,6 +9,17 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.34.0]
+
+### Added
+- **Turn tuition payments on your donation site & kiosk on or off** — a new switch in
+  **Settings → Payments**. When it's on (the default), families can pay their balance with their
+  child's name + PIN through the masjid's OpenMasjid **Donations** site and **Kiosk**; turn it off to
+  hide tuition there without touching the parent portal. This is the admin control behind the
+  `students/billing` Fabric capability's `info.enabled` — the first consumer, **OpenMasjid Donations,
+  is now wired up to it** (its `tuition` campaign type looks up the balance and records the payment
+  through this app over the OpenMasjidOS Fabric).
+
 ## [0.33.0]
 
 ### Added

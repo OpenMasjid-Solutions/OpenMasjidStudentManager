@@ -335,6 +335,8 @@
     "smtpTestOk": "Test email sent — check the inbox.",
     "payments": "Payments",
     "paymentsHint": "Choose which of your OpenMasjidOS Stripe accounts tuition is collected into. This is used for card payments in the parent portal and for the tuition option on your donation site and kiosk.",
+    "externalPayments": "Accept tuition at your donation site & kiosk",
+    "externalPaymentsHint": "When on, families can pay their balance with their child's name and PIN on your masjid's donation site and kiosk. Turn it off to hide tuition there — the parent portal is unaffected.",
     "paymentsAccount": "Stripe account for tuition",
     "paymentsChoose": "Choose an account…",
     "paymentsNoAccounts": "No Stripe accounts found. Add one in OpenMasjidOS (Settings → Payments), then reopen this page.",

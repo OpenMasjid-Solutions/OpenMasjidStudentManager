@@ -8,7 +8,7 @@ import { isNotNull } from 'drizzle-orm';
 import { router, adminProcedure, auditActor } from './trpc';
 import { db } from '../db';
 import { families, paymentMethods, autopayEnrollments } from '../db/schema';
-import { SETTING_KEYS, getSchoolName, getCurrency, getMeritOnReportCard, getSelfRegistrationEnabled, setSetting, getSmtp, setSmtp, getChosenStripeAccount, setChosenStripeAccount } from '../settings';
+import { SETTING_KEYS, getSchoolName, getCurrency, getMeritOnReportCard, getSelfRegistrationEnabled, getExternalPaymentsEnabled, setSetting, getSmtp, setSmtp, getChosenStripeAccount, setChosenStripeAccount } from '../settings';
 import { audit } from '../audit';
 import { verifySmtp, sendMail } from '../mail/smtp';
 import { testEmail } from '../mail/templates';
@@ -21,15 +21,17 @@ export const settingsRouter = router({
     currency: getCurrency(),
     meritOnReportCard: getMeritOnReportCard(),
     selfRegistration: getSelfRegistrationEnabled(),
+    externalPayments: getExternalPaymentsEnabled(),
   })),
 
   set: adminProcedure
-    .input(z.object({ schoolName: z.string().trim().max(160).optional(), currency: z.enum(['usd', 'cad', 'gbp', 'eur']).optional(), meritOnReportCard: z.boolean().optional(), selfRegistration: z.boolean().optional() }))
+    .input(z.object({ schoolName: z.string().trim().max(160).optional(), currency: z.enum(['usd', 'cad', 'gbp', 'eur']).optional(), meritOnReportCard: z.boolean().optional(), selfRegistration: z.boolean().optional(), externalPayments: z.boolean().optional() }))
     .mutation(({ ctx, input }) => {
       if (input.schoolName !== undefined) setSetting(SETTING_KEYS.schoolName, input.schoolName);
       if (input.currency !== undefined) setSetting(SETTING_KEYS.currency, input.currency);
       if (input.meritOnReportCard !== undefined) setSetting(SETTING_KEYS.meritOnReportCard, input.meritOnReportCard ? '1' : '0');
       if (input.selfRegistration !== undefined) setSetting(SETTING_KEYS.selfRegistration, input.selfRegistration ? '1' : '0');
+      if (input.externalPayments !== undefined) setSetting(SETTING_KEYS.externalPayments, input.externalPayments ? '1' : '0');
       audit(auditActor(ctx), 'settings.update', { entity: 'settings', detail: { keys: Object.keys(input) } });
       return { ok: true as const };
     }),
