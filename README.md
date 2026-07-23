@@ -48,3 +48,5 @@ OpenMasjidOS for visual parity — see [`packages/web/PORTED_FROM_OPENMASJIDOS.m
 
 [AGPL-3.0-only](LICENSE). Contributions are governed by the
 [CLA](CLA.md) — see [CONTRIBUTING.md](CONTRIBUTING.md).
+
+live. laugh. coffee.
