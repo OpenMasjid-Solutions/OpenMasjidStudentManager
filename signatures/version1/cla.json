@@ -1,3 +1,12 @@
 {
-   "signedContributors": []
+  "signedContributors": [
+    {
+      "name": "SyButter",
+      "id": 61396233,
+      "comment_id": 5064393449,
+      "created_at": "2026-07-23T23:05:35Z",
+      "repoId": 1302205530,
+      "pullRequestNo": 1
+    }
+  ]
 }
