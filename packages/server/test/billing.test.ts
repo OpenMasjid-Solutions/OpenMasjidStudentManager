@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 OpenMasjid-Solutions
 /**
- * Billing router (CLAUDE.md §4/§5): fee plans, per-enrollment assignment, per-family discount,
+ * Billing router (CLAUDE.md §4/§5): fee plans, per-student assignment, per-family discount,
  * invoice generation (with discount line), the family ledger view, manual payments, void, and
- * the walls — admin + finance only (teacher/parent refused; admin over tunnel refused; finance
+ * the walls — admin + finance only (parent refused; admin over tunnel refused; finance
  * works over the tunnel).
  */
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { freshApp, makeCtx } from './harness';
-import { paymentAllocations, payments, invoiceItems, invoices, enrollmentFees, feePlans, enrollments, classTeachers, classSubjects, classSessions, classes, terms, students, families, users, auditLog } from '../src/db/schema';
+import { paymentAllocations, payments, invoiceItems, invoices, studentFees, feePlans, students, families, users, auditLog } from '../src/db/schema';
 import type { Role } from '../src/db/schema';
 
 let app: Awaited<ReturnType<typeof freshApp>>;
@@ -18,28 +18,24 @@ const caller = (role: Role, opts: { origin?: 'lan' | 'tunnel'; userId?: string }
 beforeAll(async () => { app = await freshApp(); });
 beforeEach(() => {
   const { db } = app.dbmod;
-  for (const t of [paymentAllocations, payments, invoiceItems, invoices, enrollmentFees, feePlans, enrollments, classTeachers, classSubjects, classSessions, classes, terms, students, families, users, auditLog]) db.delete(t).run();
+  for (const t of [paymentAllocations, payments, invoiceItems, invoices, studentFees, feePlans, students, families, users, auditLog]) db.delete(t).run();
 });
 
 async function scenario() {
   const admin = caller('admin');
-  const term = await admin.classes.termCreate({ name: 'T1', isCurrent: true });
-  const cls = await admin.classes.classCreate({ termId: term.id, name: 'Maktab A', type: 'maktab' });
   const fam = await admin.people.familyCreate({ name: 'Ismail' });
   const s1 = await admin.people.studentCreate({ familyId: fam.id, firstName: 'Yusuf', lastName: 'Ismail' });
   const s2 = await admin.people.studentCreate({ familyId: fam.id, firstName: 'Sara', lastName: 'Ismail' });
-  await admin.classes.enroll({ classId: cls.id, studentId: s1.id });
-  await admin.classes.enroll({ classId: cls.id, studentId: s2.id });
-  return { admin, familyId: fam.id, classId: cls.id, s1: s1.id, s2: s2.id };
+  return { admin, familyId: fam.id, s1: s1.id, s2: s2.id };
 }
 
 describe('fee plans → assign → generate → pay', () => {
   it('generates a family invoice from assigned fees and records a payment against it', async () => {
-    const { admin, familyId, classId } = await scenario();
+    const { admin, familyId } = await scenario();
     const plan = await admin.billing.feePlanCreate({ name: 'Monthly tuition', amountCents: 5000, cadence: 'monthly' });
-    // Assign the plan to both of the family's enrollments.
+    // Assign the plan to both of the family's students.
     const fees = await admin.billing.familyFees({ familyId });
-    for (const f of fees) await admin.billing.assignFee({ enrollmentId: f.enrollmentId, feePlanId: plan.id });
+    for (const f of fees) await admin.billing.assignFee({ studentId: f.studentId, feePlanId: plan.id });
     const gen = await admin.billing.generateFamily({ familyId, periodKey: '2026-07', label: 'Tuition — Jul 2026', dueDate: '2026-07-01' });
     expect(gen.created).toBe(true);
     let billing = await admin.billing.familyBilling({ familyId });
@@ -62,7 +58,7 @@ describe('fee plans → assign → generate → pay', () => {
   it('applies a family percent discount as a negative line', async () => {
     const { admin, familyId } = await scenario();
     const plan = await admin.billing.feePlanCreate({ name: 'Tuition', amountCents: 10000, cadence: 'per_term' });
-    for (const f of await admin.billing.familyFees({ familyId })) await admin.billing.assignFee({ enrollmentId: f.enrollmentId, feePlanId: plan.id });
+    for (const f of await admin.billing.familyFees({ familyId })) await admin.billing.assignFee({ studentId: f.studentId, feePlanId: plan.id });
     await admin.billing.setDiscount({ familyId, kind: 'percent', value: 1000 }); // 10%
     await admin.billing.generateFamily({ familyId, periodKey: 'T1', label: 'Term 1' });
     const billing = await admin.billing.familyBilling({ familyId });
@@ -72,7 +68,7 @@ describe('fee plans → assign → generate → pay', () => {
   it('refuses to void an invoice that still carries payment; allows it once reversed', async () => {
     const { admin, familyId } = await scenario();
     const plan = await admin.billing.feePlanCreate({ name: 'Tuition', amountCents: 8000, cadence: 'one_time' });
-    for (const f of await admin.billing.familyFees({ familyId })) await admin.billing.assignFee({ enrollmentId: f.enrollmentId, feePlanId: plan.id });
+    for (const f of await admin.billing.familyFees({ familyId })) await admin.billing.assignFee({ studentId: f.studentId, feePlanId: plan.id });
     await admin.billing.generateFamily({ familyId, periodKey: 'once', label: 'One-time' });
     const invId = (await admin.billing.familyBilling({ familyId })).invoices[0].id;
     const pay = await admin.billing.recordManualPayment({ familyId, amountCents: 16000, channel: 'cash', occurredAt: '2026-07-03' });
@@ -95,7 +91,7 @@ describe('fee plans → assign → generate → pay', () => {
   it('reversing a payment restores the balance; void removes an invoice from the balance', async () => {
     const { admin, familyId } = await scenario();
     const plan = await admin.billing.feePlanCreate({ name: 'Tuition', amountCents: 8000, cadence: 'one_time' });
-    for (const f of await admin.billing.familyFees({ familyId })) await admin.billing.assignFee({ enrollmentId: f.enrollmentId, feePlanId: plan.id });
+    for (const f of await admin.billing.familyFees({ familyId })) await admin.billing.assignFee({ studentId: f.studentId, feePlanId: plan.id });
     await admin.billing.generateFamily({ familyId, periodKey: 'once', label: 'One-time' });
     const pay = await admin.billing.recordManualPayment({ familyId, amountCents: 16000, channel: 'cash', occurredAt: '2026-07-03' });
     expect((await admin.billing.familyBilling({ familyId })).balance.balanceCents).toBe(0);
@@ -110,7 +106,7 @@ describe('fee plans → assign → generate → pay', () => {
 describe('walls', () => {
   it('billing is admin+finance only; teacher/parent refused; admin over tunnel refused; finance over tunnel ok', async () => {
     const { admin, familyId } = await scenario();
-    for (const r of ['teacher', 'parent'] as const) {
+    for (const r of ['parent'] as const) {
       await expect(caller(r).billing.feePlanList()).rejects.toMatchObject({ code: 'FORBIDDEN' });
       await expect(caller(r).billing.familyBilling({ familyId })).rejects.toMatchObject({ code: 'FORBIDDEN' });
       await expect(caller(r).billing.recordManualPayment({ familyId, amountCents: 100, channel: 'cash', occurredAt: '2026-07-01' })).rejects.toMatchObject({ code: 'FORBIDDEN' });

@@ -2,24 +2,23 @@
 // Copyright (C) 2026 OpenMasjid-Solutions
 /**
  * Invoice generation (CLAUDE.md §4): build a family's invoice for a period from its active
- * enrollment fees (one line per student × fee plan), then apply the family's discount as a
+ * students' fees (one line per student × fee plan), then apply the family's discount as a
  * negative line. UNIQUE(family, periodKey) makes generation idempotent — re-running a period
  * never double-bills. Money is integer cents.
  */
 import { and, eq, asc } from 'drizzle-orm';
 import { db } from '../db';
-import { invoices, invoiceItems, enrollmentFees, enrollments, students, feePlans, families } from '../db/schema';
+import { invoices, invoiceItems, studentFees, students, feePlans, families } from '../db/schema';
 import { rid } from '../db/ids';
 
-/** Line items (before discount) from a family's active enrollment fees. */
+/** Line items (before discount) from a family's active students' fees. */
 function feeLines(familyId: string): { description: string; amountCents: number; studentId: string }[] {
   return db
     .select({ studentId: students.id, firstName: students.firstName, planName: feePlans.name, amountCents: feePlans.amountCents })
-    .from(enrollmentFees)
-    .innerJoin(enrollments, eq(enrollments.id, enrollmentFees.enrollmentId))
-    .innerJoin(students, eq(students.id, enrollments.studentId))
-    .innerJoin(feePlans, eq(feePlans.id, enrollmentFees.feePlanId))
-    .where(and(eq(students.familyId, familyId), eq(enrollments.status, 'active'), eq(students.status, 'active'), eq(feePlans.status, 'active')))
+    .from(studentFees)
+    .innerJoin(students, eq(students.id, studentFees.studentId))
+    .innerJoin(feePlans, eq(feePlans.id, studentFees.feePlanId))
+    .where(and(eq(students.familyId, familyId), eq(students.status, 'active'), eq(feePlans.status, 'active')))
     .orderBy(asc(students.firstName))
     .all()
     .map((r) => ({ description: `${r.planName} — ${r.firstName}`, amountCents: r.amountCents, studentId: r.studentId }));

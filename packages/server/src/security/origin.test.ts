@@ -68,7 +68,7 @@ describe('origin policy matrix', () => {
   it('admin is LAN-only; everyone else works from both origins', () => {
     expect(roleAllowedFromOrigin('admin', 'lan')).toBe(true);
     expect(roleAllowedFromOrigin('admin', 'tunnel')).toBe(false);
-    for (const role of ['teacher', 'finance', 'parent'] as const) {
+    for (const role of ['finance', 'parent'] as const) {
       expect(roleAllowedFromOrigin(role, 'lan')).toBe(true);
       expect(roleAllowedFromOrigin(role, 'tunnel')).toBe(true);
     }

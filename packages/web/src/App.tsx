@@ -17,13 +17,11 @@ import { Login } from './routes/Login';
 import { Home } from './routes/Home';
 import { ChangePassword } from './routes/ChangePassword';
 import { AdminApp } from './routes/admin/AdminApp';
-import { TeachApp } from './routes/teach/TeachApp';
 import { FinanceApp } from './routes/finance/FinanceApp';
 import { FamilyApp } from './routes/family/FamilyApp';
 import { InviteAccept } from './routes/InviteAccept';
 import { ResetPassword } from './routes/ResetPassword';
 import { SelfRegister } from './routes/SelfRegister';
-import { ApplyForm } from './routes/apply/ApplyForm';
 import { trpc } from './lib/trpc';
 import { stripBase } from './lib/base';
 import { useOmosAppearanceSync } from './lib/appearance';
@@ -64,18 +62,8 @@ export function App() {
 
   // Anonymous portal entry points reached via the emailed invite link / statement QR. These take
   // precedence over the session gate (a parent sets a password here before they have an account).
-  // stripBase drops the tunnel prefix so "/students/apply" matches "/apply" (§12/§15).
+  // stripBase drops the tunnel prefix so "/students/family/reset" matches "/family/reset" (§12/§15).
   const path = stripBase(typeof window !== 'undefined' ? window.location.pathname : '/');
-  // The public admissions enquiry form — anonymous, over the tunnel (§4/§14).
-  if (path === '/apply') {
-    return (
-      <>
-        <SceneBackground />
-        <ShellControls />
-        <div className="auth-wrap"><ApplyForm /></div>
-      </>
-    );
-  }
   // Password reset (§12): /family/reset — request a link (no token) or set a new password (with ?token=).
   if (path === '/family/reset') {
     const token = new URLSearchParams(window.location.search).get('token');
@@ -115,11 +103,10 @@ export function App() {
     );
   }
 
-  // Admin + teacher run as full-screen desktop apps (their own topbar + dock + windows);
-  // finance and parent get the placeholder until their dashboards land (CLAUDE.md §20).
+  // Admin + finance run as full-screen desktop apps (their own topbar + dock + windows);
+  // parents get the phone-first portal.
   if (!session.isLoading && !session.isError && s?.authenticated) {
     if (s.user?.role === 'admin') return <AdminApp />;
-    if (s.user?.role === 'teacher') return <TeachApp />;
     if (s.user?.role === 'finance') return <FinanceApp />;
     if (s.user?.role === 'parent') return <FamilyApp />;
   }

@@ -51,7 +51,7 @@ jobs:
           PERSONAL_ACCESS_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
         with:
           path-to-signatures: 'signatures/version1/cla.json'
-          path-to-document: 'https://github.com/OpenMasjid-Solutions/OpenMasjidStudentManager/blob/main/CLA.md'
+          path-to-document: 'https://github.com/OpenMasjid-Solutions/OpenMasjidStudents/blob/main/CLA.md'
           # Dedicated unprotected branch that holds the signatures file (see header).
           branch: 'cla-signatures'
           # The custom sentence a contributor posts to sign:

@@ -8,7 +8,7 @@
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { freshApp, makeCtx } from './harness';
-import { gradeItems, grades, attendance, meritAwards, meritCategories, reportCards, transcripts, invites, guardianUsers, guardianFamilies, guardians, emergencyContacts, paymentAllocations, payments, invoiceItems, invoices, enrollmentFees, feePlans, enrollments, classTeachers, classSubjects, classSessions, classes, terms, students, families, sessions, users, auditLog } from '../src/db/schema';
+import { invites, guardianUsers, guardianFamilies, guardians, emergencyContacts, paymentAllocations, payments, invoiceItems, invoices, studentFees, feePlans, students, families, sessions, users, auditLog } from '../src/db/schema';
 import type { Role } from '../src/db/schema';
 
 let app: Awaited<ReturnType<typeof freshApp>>;
@@ -19,45 +19,24 @@ const pub = (origin: 'lan' | 'tunnel' = 'lan') => app.appRouter.createCaller(mak
 beforeAll(async () => { app = await freshApp(); });
 beforeEach(() => {
   const { db } = app.dbmod;
-  for (const t of [grades, gradeItems, attendance, meritAwards, meritCategories, reportCards, transcripts, invites, guardianUsers, guardianFamilies, guardians, emergencyContacts, paymentAllocations, payments, invoiceItems, invoices, enrollmentFees, feePlans, enrollments, classTeachers, classSubjects, classSessions, classes, terms, students, families, sessions, users, auditLog]) db.delete(t).run();
+  for (const t of [invites, guardianUsers, guardianFamilies, guardians, emergencyContacts, paymentAllocations, payments, invoiceItems, invoices, studentFees, feePlans, students, families, sessions, users, auditLog]) db.delete(t).run();
 });
 
 /** Two families, each with a student and a guardian-with-email; family A also has a fee+invoice+payment. */
 async function scenario() {
   const admin = caller('admin');
-  const term = await admin.classes.termCreate({ name: 'T1', isCurrent: true });
-  const cls = await admin.classes.classCreate({ termId: term.id, name: 'Maktab A', type: 'maktab' });
   const famA = await admin.people.familyCreate({ name: 'Ismail' });
   const famB = await admin.people.familyCreate({ name: 'Farooqi' });
   const sA = await admin.people.studentCreate({ familyId: famA.id, firstName: 'Yusuf', lastName: 'Ismail' });
   const sB = await admin.people.studentCreate({ familyId: famB.id, firstName: 'Bilal', lastName: 'Farooqi' });
-  await admin.classes.enroll({ classId: cls.id, studentId: sA.id });
   const gA = await admin.people.guardianCreate({ familyId: famA.id, name: 'Abu Yusuf', email: 'AbuYusuf@example.com' });
   const gB = await admin.people.guardianCreate({ familyId: famB.id, name: 'Abu Bilal', email: 'abubilal@example.com' });
-  const clsB = await admin.classes.classCreate({ termId: term.id, name: 'Maktab B', type: 'maktab' });
-  await admin.classes.enroll({ classId: clsB.id, studentId: sB.id });
   // Family A: a fee + invoice + partial payment, so the balance view has content.
   const plan = await admin.billing.feePlanCreate({ name: 'Tuition', amountCents: 5000, cadence: 'monthly' });
-  for (const f of await admin.billing.familyFees({ familyId: famA.id })) await admin.billing.assignFee({ enrollmentId: f.enrollmentId, feePlanId: plan.id });
+  await admin.billing.assignFee({ studentId: sA.id, feePlanId: plan.id });
   await admin.billing.generateFamily({ familyId: famA.id, periodKey: '2026-07', label: 'Tuition — Jul 2026', dueDate: '2026-07-01' });
   await admin.billing.recordManualPayment({ familyId: famA.id, amountCents: 2000, channel: 'cash', occurredAt: '2026-07-03' });
-  return { admin, famA: famA.id, famB: famB.id, gA: gA.id, gB: gB.id, sA: sA.id, sB: sB.id, cls: cls.id, clsB: clsB.id, term: term.id };
-}
-
-/** Insert a report-card row directly (bypassing the exam→PDF pipeline) for scoping tests. */
-function mkCard(studentId: string, classId: string, termId: string, version: number, published: boolean) {
-  const { db } = app.dbmod;
-  const ts = new Date();
-  const id = `rc_${studentId}_${classId}_${version}`;
-  db.insert(reportCards).values({ id, studentId, classId, termId, version, pdfPath: `${id}.pdf`, dataJson: null, generatedByUserId: null, generatedByName: 'Admin', generatedAt: ts, publishedAt: published ? ts : null, createdAt: ts, updatedAt: ts }).run();
-  return id;
-}
-function mkTranscript(studentId: string, version: number, published: boolean) {
-  const { db } = app.dbmod;
-  const ts = new Date();
-  const id = `tr_${studentId}_${version}`;
-  db.insert(transcripts).values({ id, studentId, version, pdfPath: `${id}.pdf`, dataJson: null, generatedByUserId: null, generatedByName: 'Admin', generatedAt: ts, publishedAt: published ? ts : null, createdAt: ts, updatedAt: ts }).run();
-  return id;
+  return { admin, famA: famA.id, famB: famB.id, gA: gA.id, gB: gB.id, sA: sA.id, sB: sB.id };
 }
 
 /** Run the real invite door for a guardian; returns the new parent userId. */
@@ -129,9 +108,8 @@ describe('invite door', () => {
     expect(await pub().auth.login({ username: longEmail, password: 'parent-pass-1234' })).toMatchObject({ ok: true, role: 'parent' });
   });
 
-  it('only admin/finance can create invites', async () => {
+  it('only admin/finance can create invites; parents cannot', async () => {
     const { gA } = await scenario();
-    await expect(caller('teacher').auth.inviteCreate({ guardianId: gA })).rejects.toMatchObject({ code: 'FORBIDDEN' });
     await expect(caller('parent').auth.inviteCreate({ guardianId: gA })).rejects.toMatchObject({ code: 'FORBIDDEN' });
     expect((await caller('finance').auth.inviteCreate({ guardianId: gA })).token).toBeTruthy();
   });
@@ -175,84 +153,5 @@ describe('parent portal scoping (the wall)', () => {
     const uid = await acceptInvite(admin, gA);
     const res = await caller('parent', { origin: 'tunnel', userId: uid }).portal.myFamily();
     expect(res.families).toHaveLength(1);
-  });
-});
-
-describe('portal.myReports (published report cards + transcripts)', () => {
-  it('returns the latest PUBLISHED card per class + published transcripts, own kids only', async () => {
-    const { admin, gA, sA, sB, cls, clsB, term } = await scenario();
-    mkCard(sA, cls, term, 1, false); // an unpublished v1
-    mkCard(sA, cls, term, 2, true); // the published v2 (should be surfaced)
-    mkTranscript(sA, 1, true); // published transcript
-    mkCard(sB, clsB, term, 1, true); // another family's card — must NOT leak
-    const uid = await acceptInvite(admin, gA);
-    const res = await caller('parent', { userId: uid }).portal.myReports();
-    // Only child A appears, and only their published artifacts.
-    const withReports = res.children.filter((c) => c.reportCards.length || c.transcripts.length);
-    expect(withReports).toHaveLength(1);
-    expect(withReports[0].studentId).toBe(sA);
-    expect(withReports[0].reportCards).toHaveLength(1);
-    expect(withReports[0].reportCards[0].version).toBe(2); // latest published, not the unpublished v1
-    expect(withReports[0].transcripts).toHaveLength(1);
-    // Nothing from student B (other family).
-    expect(res.children.every((c) => c.studentId !== sB)).toBe(true);
-  });
-
-  it('hides an unpublished-only child’s reports', async () => {
-    const { admin, gA, sA, cls, term } = await scenario();
-    mkCard(sA, cls, term, 1, false); // unpublished only
-    const uid = await acceptInvite(admin, gA);
-    const res = await caller('parent', { userId: uid }).portal.myReports();
-    expect(res.children.every((c) => c.reportCards.length === 0 && c.transcripts.length === 0)).toBe(true);
-  });
-});
-
-describe('portal per-child academics (grades / attendance / merit)', () => {
-  it('returns a kid’s grades, attendance tallies, and merit — scoped, and refuses another family’s kid', async () => {
-    const { admin, gA, sA, sB, cls, term } = await scenario();
-    const { db } = app.dbmod;
-    const ts = new Date();
-    // A grade item in the class + the kid's score (points stored ×100).
-    db.insert(gradeItems).values({ id: 'gi_1', classId: cls, title: 'Quiz 1', date: '2026-07-05', maxPoints: 10, category: 'Quiz', createdAt: ts, updatedAt: ts }).run();
-    db.insert(grades).values({ id: 'gr_1', gradeItemId: 'gi_1', studentId: sA, points: 800, markedByUserId: null, markedByName: 'T', createdAt: ts, updatedAt: ts }).run();
-    // Attendance: one present, one absent.
-    db.insert(attendance).values({ id: 'at_1', classId: cls, studentId: sA, date: '2026-07-05', status: 'present', note: null, markedByUserId: null, markedByName: 'T', createdAt: ts, updatedAt: ts }).run();
-    db.insert(attendance).values({ id: 'at_2', classId: cls, studentId: sA, date: '2026-07-06', status: 'absent', note: null, markedByUserId: null, markedByName: 'T', createdAt: ts, updatedAt: ts }).run();
-    // Merit: a category + a +5 award.
-    db.insert(meritCategories).values({ id: 'mc_1', name: 'Ādāb', defaultPoints: 5, isSystem: false, position: 0, archivedAt: null, createdAt: ts, updatedAt: ts }).run();
-    db.insert(meritAwards).values({ id: 'ma_1', studentId: sA, classId: cls, termId: term, categoryId: 'mc_1', points: 5, note: 'Helped a classmate', awardedByUserId: null, awardedByName: 'T', createdAt: ts, updatedAt: ts }).run();
-
-    const uid = await acceptInvite(admin, gA);
-    const parent = caller('parent', { userId: uid });
-
-    const g = await parent.portal.childGrades({ studentId: sA });
-    expect(g.classes).toHaveLength(1);
-    expect(g.classes[0].items[0]).toMatchObject({ title: 'Quiz 1', maxPoints: 10, points: 8 }); // 800 ÷ 100
-
-    const a = await parent.portal.childAttendance({ studentId: sA });
-    expect(a.total).toBe(2);
-    expect(a.counts).toMatchObject({ present: 1, absent: 1, late: 0, excused: 0 });
-
-    const m = await parent.portal.childMerit({ studentId: sA });
-    expect(m.total).toBe(5);
-    expect(m.history[0]).toMatchObject({ category: 'Ādāb', points: 5 });
-
-    // The wall: this parent may NOT read another family's child.
-    await expect(parent.portal.childGrades({ studentId: sB })).rejects.toMatchObject({ code: 'FORBIDDEN' });
-    await expect(parent.portal.childAttendance({ studentId: sB })).rejects.toMatchObject({ code: 'FORBIDDEN' });
-    await expect(parent.portal.childMerit({ studentId: sB })).rejects.toMatchObject({ code: 'FORBIDDEN' });
-  });
-
-  it('childSchedule returns the kid’s weekly sessions and refuses another family’s kid', async () => {
-    const { admin, gA, sA, sB, cls } = await scenario();
-    const { db } = app.dbmod;
-    const ts = new Date();
-    db.insert(classSessions).values({ id: 'cs_1', classId: cls, dayOfWeek: 6, startMin: 540, endMin: 600, room: 'Room 1', createdAt: ts, updatedAt: ts }).run();
-    const uid = await acceptInvite(admin, gA);
-    const parent = caller('parent', { userId: uid });
-    const s = await parent.portal.childSchedule({ studentId: sA });
-    expect(s.sessions).toHaveLength(1);
-    expect(s.sessions[0]).toMatchObject({ dayOfWeek: 6, startMin: 540, endMin: 600, room: 'Room 1', className: 'Maktab A', classType: 'maktab' });
-    await expect(parent.portal.childSchedule({ studentId: sB })).rejects.toMatchObject({ code: 'FORBIDDEN' });
   });
 });

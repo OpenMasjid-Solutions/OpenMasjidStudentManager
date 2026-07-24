@@ -5,8 +5,8 @@ name: Build image
 
 # Builds this app's Dockerfile multi-arch (amd64 + arm64) and pushes to GHCR as
 #   ghcr.io/<owner>/<repo-name>:<manifest version>   (+ :latest)
-# The repo is named OpenMasjidStudentManager, so the image is
-#   ghcr.io/openmasjid-solutions/openmasjidstudentmanager
+# The repo is named OpenMasjidStudents, so the image is
+#   ghcr.io/openmasjid-solutions/openmasjidstudents
 # which is what docker-compose.yml references. The app id stays `students`
 # (the Fabric contract — see docs/FABRIC_BILLING_CONTRACT.md).
 #

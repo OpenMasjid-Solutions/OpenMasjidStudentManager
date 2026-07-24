@@ -4,19 +4,19 @@
  * The floating bottom dock — primary nav + open/minimized windows (the family shell,
  * matching OpenMasjidOS/Kiosk/Display). Adapted from OpenMasjidOS packages/ui/Dock:
  * our nav is a small fixed set of sections (state-driven, no router / no app-pinning),
- * given as `items` so each role's shell (admin / teacher / …) supplies its own set.
+ * given as `items` so each role's shell (admin / finance) supplies its own set.
  * Open windows restore from the dock. Uses the ported .dock/.dock-item styles (§15).
  */
 import { type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { LayoutGrid, Users, GraduationCap, CalendarDays, ClipboardList, Wallet, UserCog, Settings as SettingsIcon, CalendarRange, AppWindow, UserPlus, FileBarChart } from 'lucide-react';
+import { LayoutGrid, Users, Wallet, UserCog, Settings as SettingsIcon, AppWindow } from 'lucide-react';
 import { cn } from '../lib/cn';
 import { useWindows } from './Windows';
 
 /** Admin sections (Dock is generic; this union just types the admin shell's state). */
-export type Section = 'dashboard' | 'directory' | 'classes' | 'timetable' | 'exams' | 'admissions' | 'billing' | 'reports' | 'staff' | 'settings';
-/** Finance sections (a small subset — finance runs billing + admissions + reports, §5). */
-export type FinanceSection = 'billing' | 'admissions' | 'reports';
+export type Section = 'dashboard' | 'directory' | 'billing' | 'staff' | 'settings';
+/** Finance sections — finance runs billing (§5). */
+export type FinanceSection = 'billing';
 
 export interface DockItem {
   id: string;
@@ -28,25 +28,13 @@ export interface DockItem {
 export const ADMIN_ITEMS: DockItem[] = [
   { id: 'dashboard', icon: <LayoutGrid size={20} />, labelKey: 'nav.dashboard' },
   { id: 'directory', icon: <Users size={20} />, labelKey: 'nav.directory' },
-  { id: 'classes', icon: <GraduationCap size={20} />, labelKey: 'nav.classes' },
-  { id: 'timetable', icon: <CalendarDays size={20} />, labelKey: 'nav.timetable' },
-  { id: 'exams', icon: <ClipboardList size={20} />, labelKey: 'nav.exams' },
-  { id: 'admissions', icon: <UserPlus size={20} />, labelKey: 'nav.admissions' },
   { id: 'billing', icon: <Wallet size={20} />, labelKey: 'nav.billing' },
-  { id: 'reports', icon: <FileBarChart size={20} />, labelKey: 'nav.reports' },
   { id: 'staff', icon: <UserCog size={20} />, labelKey: 'nav.staff' },
   { id: 'settings', icon: <SettingsIcon size={20} />, labelKey: 'nav.settings' },
 ];
 
-export const TEACH_ITEMS: DockItem[] = [
-  { id: 'week', icon: <CalendarRange size={20} />, labelKey: 'nav.myWeek' },
-  { id: 'classes', icon: <GraduationCap size={20} />, labelKey: 'nav.myClasses' },
-];
-
 export const FINANCE_ITEMS: DockItem[] = [
   { id: 'billing', icon: <Wallet size={20} />, labelKey: 'nav.billing' },
-  { id: 'admissions', icon: <UserPlus size={20} />, labelKey: 'nav.admissions' },
-  { id: 'reports', icon: <FileBarChart size={20} />, labelKey: 'nav.reports' },
 ];
 
 export function Dock({ items, active, onNavigate }: { items: DockItem[]; active: string; onNavigate: (id: string) => void }) {

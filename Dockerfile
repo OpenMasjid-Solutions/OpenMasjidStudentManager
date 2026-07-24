@@ -27,7 +27,7 @@ ENV NODE_ENV=production
 
 LABEL org.opencontainers.image.title="OpenMasjid Students" \
       org.opencontainers.image.description="Self-hosted, madrasa-first school management (SIS, grades, report cards, transcripts, tuition) — an OpenMasjidOS app." \
-      org.opencontainers.image.source="https://github.com/OpenMasjid-Solutions/OpenMasjidStudentManager" \
+      org.opencontainers.image.source="https://github.com/OpenMasjid-Solutions/OpenMasjidStudents" \
       org.opencontainers.image.licenses="AGPL-3.0"
 
 # ca-certificates: outbound HTTPS to api.stripe.com + the OS Fabric. tini: reap

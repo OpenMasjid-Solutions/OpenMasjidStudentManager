@@ -141,6 +141,20 @@
       "when": 1784510591882,
       "tag": "0019_dizzy_tempest",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1784849841559,
+      "tag": "0020_glossy_dragon_lord",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1784849928798,
+      "tag": "0021_acoustic_ben_urich",
+      "breakpoints": true
     }
   ]
 }

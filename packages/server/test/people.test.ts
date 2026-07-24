@@ -49,7 +49,7 @@ describe('writes are admin-only; reads are admin | finance', () => {
   });
 
   it('teacher and parent cannot read the directory or write', async () => {
-    for (const role of ['teacher', 'parent'] as const) {
+    for (const role of ['parent'] as const) {
       await expect(caller(role).people.directory()).rejects.toMatchObject({ code: 'FORBIDDEN' });
       await expect(caller(role).people.familyCreate({ name: 'X' })).rejects.toMatchObject({ code: 'FORBIDDEN' });
     }

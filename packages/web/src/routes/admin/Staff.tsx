@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 OpenMasjid-Solutions
-/** Staff accounts — create teacher/finance users (temp password → forced change on first
+/** Staff accounts — create finance users (temp password → forced change on first
  *  login), enable/disable. Admin-only. */
 import { useState, type FormEvent } from 'react';
 import { motion } from 'motion/react';
@@ -16,7 +16,7 @@ export function Staff() {
   const list = trpc.staff.list.useQuery();
   const create = trpc.staff.create.useMutation();
   const setStatus = trpc.staff.setStatus.useMutation();
-  const [f, setF] = useState<{ username: string; displayName: string; role: 'teacher' | 'finance'; phone: string; tempPassword: string }>({ username: '', displayName: '', role: 'teacher', phone: '', tempPassword: '' });
+  const [f, setF] = useState<{ username: string; displayName: string; phone: string; tempPassword: string }>({ username: '', displayName: '', phone: '', tempPassword: '' });
   const [err, setErr] = useState('');
 
   async function add(e: FormEvent) {
@@ -24,8 +24,8 @@ export function Staff() {
     setErr('');
     if (!f.username.trim() || f.tempPassword.length < MIN_PW) return setErr(t('staff.formHint'));
     try {
-      await create.mutateAsync({ username: f.username.trim(), displayName: f.displayName.trim() || undefined, role: f.role, phone: f.phone.trim() || undefined, tempPassword: f.tempPassword });
-      setF({ username: '', displayName: '', role: 'teacher', phone: '', tempPassword: '' });
+      await create.mutateAsync({ username: f.username.trim(), displayName: f.displayName.trim() || undefined, role: 'finance', phone: f.phone.trim() || undefined, tempPassword: f.tempPassword });
+      setF({ username: '', displayName: '', phone: '', tempPassword: '' });
       await utils.staff.list.invalidate();
     } catch (e2) {
       setErr((e2 as Error).message);
@@ -63,7 +63,6 @@ export function Staff() {
         <form className="inline-form glass-inset" onSubmit={add}>
           <div className="field"><label className="label">{t('staff.username')}</label><input className="input glass-inset" value={f.username} onChange={(e) => setF({ ...f, username: e.target.value })} autoComplete="off" /></div>
           <div className="field"><label className="label">{t('staff.name')}</label><input className="input glass-inset" value={f.displayName} onChange={(e) => setF({ ...f, displayName: e.target.value })} /></div>
-          <div className="field"><label className="label">{t('staff.role')}</label><select className="input glass-inset" value={f.role} onChange={(e) => setF({ ...f, role: e.target.value as 'teacher' | 'finance' })}><option value="teacher">{t('role.teacher')}</option><option value="finance">{t('role.finance')}</option></select></div>
           <div className="field"><label className="label">{t('staff.phone')}</label><input className="input glass-inset" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></div>
           <div className="field"><label className="label">{t('staff.tempPassword')}</label><input className="input glass-inset" type="text" value={f.tempPassword} onChange={(e) => setF({ ...f, tempPassword: e.target.value })} placeholder={t('staff.tempHint')} /></div>
           <button type="submit" className="btn btn--primary" disabled={create.isPending}>{t('staff.add')}</button>

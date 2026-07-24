@@ -1,25 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 OpenMasjid-Solutions
 /** One family's record (window content): students (PIN + regenerate + withdraw),
- *  guardians, emergency contacts. Clicking a student opens their record window. */
+ *  guardians, emergency contacts. */
 import { useState, type FormEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { trpc } from '../../lib/trpc';
-import { useWindows } from '../../components/Windows';
-import { StudentDetail } from './StudentDetail';
-
-export interface StudentLite {
-  id: string;
-  firstName: string;
-  lastName: string;
-  pin: string;
-  status: 'active' | 'withdrawn';
-}
 
 export function FamilyDetail({ familyId }: { familyId: string }) {
   const { t } = useTranslation();
   const utils = trpc.useUtils();
-  const { open } = useWindows();
   const q = trpc.people.familyGet.useQuery({ id: familyId });
 
   const refresh = async () => {
@@ -42,10 +31,6 @@ export function FamilyDetail({ familyId }: { familyId: string }) {
   const [grd, setGrd] = useState({ name: '', phone: '', email: '', relation: '', emergency: false });
   const [showEC, setShowEC] = useState(false);
   const [ec, setEc] = useState({ name: '', phone: '', relation: '' });
-
-  function openStudent(s: StudentLite) {
-    open({ title: `${s.firstName} ${s.lastName}`, wide: true, dedupeKey: `student:${s.id}`, node: <StudentDetail student={s} /> });
-  }
 
   async function submitStudent(e: FormEvent) {
     e.preventDefault();
@@ -112,11 +97,7 @@ export function FamilyDetail({ familyId }: { familyId: string }) {
               <tbody>
                 {students.map((s) => (
                   <tr key={s.id}>
-                    <td>
-                      <button type="button" className="link-btn" onClick={() => openStudent({ id: s.id, firstName: s.firstName, lastName: s.lastName, pin: s.pin, status: s.status })}>
-                        {s.firstName} {s.lastName}
-                      </button>
-                    </td>
+                    <td>{s.firstName} {s.lastName}</td>
                     <td><span className="pin">{s.pin}</span></td>
                     <td>{s.status === 'withdrawn' ? <span className="chip is-muted">{t('directory.withdrawn')}</span> : <span className="chip">{t('directory.active')}</span>}</td>
                     <td className="actions">

@@ -1,48 +1,55 @@
+<!-- SPDX-License-Identifier: AGPL-3.0-only -->
+<!-- Copyright (C) 2026 OpenMasjid-Solutions -->
 <p align="center">
   <strong>OpenMasjid Students</strong><br/>
-  The madrasa office in one app — attendance, grades, report cards, transcripts and tuition.
+  Tuition &amp; fee management for your madrasa — pay online, at the kiosk, or on the donation site.
 </p>
 
 <p align="center">
-  <em>A self-hosted, madrasa-first school-management app that runs as an <a href="https://github.com/OpenMasjid-Solutions/OpenMasjidOS">OpenMasjidOS</a> app — one Docker container, all data on the masjid's own hardware.</em>
+  <em>A self-hosted tuition/fee app that runs as an <a href="https://github.com/OpenMasjid-Solutions/OpenMasjidOS">OpenMasjidOS</a> app — one Docker container, all data on the masjid's own hardware.</em>
 </p>
 
 ---
 
-**OpenMasjid Students** is school management built for madāris — weekend maktab,
-nazrah and hifz programs, and multi-year ʿālim courses. It is a **four-role app**:
-**admins** manage everything (LAN-only), **teachers** take attendance and run their
-gradebooks, a **finance manager** runs billing, and **parents** get a phone-first
-portal with their kids' grades, schedules, report cards, transcripts and the family
-balance — payable by card in-app (Stripe), with autopay.
+**OpenMasjid Students** keeps a madrasa's **families and students**, assigns **fee plans**
+per student, and generates **family invoices** each month or term. A **finance manager**
+records cash / Zelle / check payments and sees the whole ledger; **parents** get a
+phone-first portal with the family balance and a unified payment history, and can **pay by
+card in-app (Stripe)** — with **autopay** and saved cards. Printable statements carry each
+child's name + PIN and a portal-signup QR.
 
-Payments made through **OpenMasjid Donations** and **OpenMasjid Kiosk** flow in
-automatically over the OpenMasjidOS **Fabric**; the app also provides the
-`students/billing` capability those apps consume (see
-[`docs/FABRIC_BILLING_CONTRACT.md`](docs/FABRIC_BILLING_CONTRACT.md)).
+Tuition can also be paid with a **child's name + PIN** on the masjid's **OpenMasjid
+Donations** site and **OpenMasjid Kiosk** — those payments flow straight into the same
+ledger over the OpenMasjidOS **Fabric**. This app provides the `students/billing` capability
+those apps consume (see [`docs/FABRIC_BILLING_CONTRACT.md`](docs/FABRIC_BILLING_CONTRACT.md)).
 
-> **Standalone-first.** With no platform, no tunnel, no Donations/Kiosk and no SMTP,
-> the app still fully works on the LAN — SIS, timetable, exams, report cards,
-> transcripts and manual-payment billing all function; every integration degrades gracefully.
+Three roles: **admin** manages families, students, fee plans and settings (on the masjid
+network only); **finance** runs billing (network + internet uplink); **parents** get the
+portal (network + uplink).
+
+> **Standalone-first.** With no platform, no tunnel, no Donations/Kiosk and no SMTP, the app
+> still fully works on the masjid network — families, students, fee plans, invoices, the
+> ledger and manual-payment billing all function; every integration degrades gracefully.
+> (Without the tunnel, the parent portal is network-only and card payments reconcile via the
+> daily Stripe job instead of live confirmation.)
 
 ## Status
 
-Early development (`0.1.0`). See [`CHANGELOG.md`](CHANGELOG.md) for what has landed and
-`CLAUDE.md` for the full specification and build plan.
+Active development. See [`CHANGELOG.md`](CHANGELOG.md) for what has landed and `CLAUDE.md`
+for the specification and build plan.
 
 ## Develop
 
 ```bash
 npm install          # all workspaces
-npm run generate     # generate the initial Drizzle migration (first run)
-npm run dev          # server on :8080, web (Vite) on :5173 proxying /trpc /api /fabric /apply
+npm run dev          # server on :8080, web (Vite) on :5173 proxying /trpc /api /fabric
 npm run build        # typecheck + build web and server
 npm run lint         # tsc --noEmit across workspaces
-npm run test         # vitest
+npm run test         # vitest (ledger, fabric contract, confirm/reconcile, autopay, origin policy, …)
 ```
 
-Open http://localhost:5173 in dev. The design system is ported verbatim from
-OpenMasjidOS for visual parity — see [`packages/web/PORTED_FROM_OPENMASJIDOS.md`](packages/web/PORTED_FROM_OPENMASJIDOS.md).
+Open http://localhost:5173 in dev. The design system is ported verbatim from OpenMasjidOS
+for visual parity — see [`packages/web/PORTED_FROM_OPENMASJIDOS.md`](packages/web/PORTED_FROM_OPENMASJIDOS.md).
 
 ## License
 

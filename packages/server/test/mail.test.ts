@@ -54,7 +54,7 @@ describe('settings router — SMTP password is write-only', () => {
   });
 
   it('is admin-only (finance/teacher/parent refused)', async () => {
-    for (const r of ['finance', 'teacher', 'parent'] as Role[]) {
+    for (const r of ['finance', 'parent'] as Role[]) {
       await expect(caller(r).settings.smtpGet()).rejects.toMatchObject({ code: 'FORBIDDEN' });
     }
     await expect(caller('admin').settings.smtpGet()).resolves.toBeTruthy();

@@ -4,7 +4,7 @@
  * Access-origin policy (CLAUDE.md §5, §12.4 — a security invariant, DO NOT REGRESS).
  *
  *   admin    → LAN only (login refused AND existing sessions 403'd over the tunnel)
- *   teacher / finance / parent → LAN + tunnel
+ *   finance / parent → LAN + tunnel
  *
  * Classification — FAIL-CLOSED, and a documented, hardened evolution of §12.4 (see
  * docs/DATA_MODEL.md for the full reconciliation). §12.4's literal signal

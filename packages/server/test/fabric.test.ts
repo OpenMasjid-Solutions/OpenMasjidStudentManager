@@ -10,7 +10,7 @@ import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { eq } from 'drizzle-orm';
 import { freshApp, makeCtx } from './harness';
-import { students, families, invoices, payments, paymentAllocations, invoiceItems, enrollments, enrollmentFees, feePlans, classes, terms } from '../src/db/schema';
+import { students, families, invoices, payments, paymentAllocations, invoiceItems, studentFees, feePlans } from '../src/db/schema';
 import type { Role } from '../src/db/schema';
 
 let app: Awaited<ReturnType<typeof freshApp>>;
@@ -27,7 +27,7 @@ beforeAll(async () => {
 });
 beforeEach(() => {
   const { db } = app.dbmod;
-  for (const t of [paymentAllocations, payments, invoiceItems, invoices, enrollmentFees, feePlans, enrollments, classes, terms, students, families]) db.delete(t).run();
+  for (const t of [paymentAllocations, payments, invoiceItems, invoices, studentFees, feePlans, students, families]) db.delete(t).run();
 });
 
 const call = (method: string, body: unknown, opts: { secret?: string | null; tunnel?: boolean } = {}) =>
@@ -45,14 +45,11 @@ const call = (method: string, body: unknown, opts: { secret?: string | null; tun
 /** Seed a family with a student (auto PIN) enrolled + a fee + an open invoice; returns ids + PIN. */
 async function seed() {
   const admin = caller('admin');
-  const term = await admin.classes.termCreate({ name: 'T1', isCurrent: true });
-  const cls = await admin.classes.classCreate({ termId: term.id, name: 'Maktab A', type: 'maktab' });
   const fam = await admin.people.familyCreate({ name: 'Ismail family' });
   const s = await admin.people.studentCreate({ familyId: fam.id, firstName: 'Yusuf', lastName: 'Ismail' });
   await admin.people.studentCreate({ familyId: fam.id, firstName: 'Sara', lastName: 'Ismail' });
-  await admin.classes.enroll({ classId: cls.id, studentId: s.id });
   const plan = await admin.billing.feePlanCreate({ name: 'Tuition', amountCents: 5000, cadence: 'monthly' });
-  for (const f of await admin.billing.familyFees({ familyId: fam.id })) await admin.billing.assignFee({ enrollmentId: f.enrollmentId, feePlanId: plan.id });
+  await admin.billing.assignFee({ studentId: s.id, feePlanId: plan.id });
   await admin.billing.generateFamily({ familyId: fam.id, periodKey: '2026-07', label: 'Tuition — Jul 2026', dueDate: '2026-07-01' });
   const pin = app.dbmod.db.select({ pin: students.pin }).from(students).where(eq(students.id, s.id)).get()!.pin;
   return { familyId: fam.id, studentId: s.id, pin };

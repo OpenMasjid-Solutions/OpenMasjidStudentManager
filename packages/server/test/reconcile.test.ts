@@ -10,7 +10,7 @@ import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { eq } from 'drizzle-orm';
 import type Stripe from 'stripe';
 import { freshApp, makeCtx } from './harness';
-import { autopayEnrollments, autopayRuns, paymentMethods, paymentAllocations, payments, invoiceItems, invoices, enrollmentFees, feePlans, enrollments, classes, terms, students, families, settings } from '../src/db/schema';
+import { autopayEnrollments, autopayRuns, paymentMethods, paymentAllocations, payments, invoiceItems, invoices, studentFees, feePlans, students, families, settings } from '../src/db/schema';
 import type { Role } from '../src/db/schema';
 
 let app: Awaited<ReturnType<typeof freshApp>>;
@@ -30,19 +30,16 @@ beforeAll(async () => {
 });
 beforeEach(() => {
   const { db } = app.dbmod;
-  for (const t of [autopayRuns, autopayEnrollments, paymentMethods, paymentAllocations, payments, invoiceItems, invoices, enrollmentFees, feePlans, enrollments, classes, terms, students, families, settings]) db.delete(t).run();
+  for (const t of [autopayRuns, autopayEnrollments, paymentMethods, paymentAllocations, payments, invoiceItems, invoices, studentFees, feePlans, students, families, settings]) db.delete(t).run();
 });
 
 /** A family with one open $50 invoice. */
 async function familyWithInvoice(amount = 5000, due = '2026-06-01') {
   const admin = caller('admin');
-  const term = await admin.classes.termCreate({ name: 'T1', isCurrent: true });
-  const cls = await admin.classes.classCreate({ termId: term.id, name: 'Maktab A', type: 'maktab' });
   const fam = await admin.people.familyCreate({ name: 'Ismail' });
   const s = await admin.people.studentCreate({ familyId: fam.id, firstName: 'Yusuf', lastName: 'Ismail' });
-  await admin.classes.enroll({ classId: cls.id, studentId: s.id });
   const plan = await admin.billing.feePlanCreate({ name: 'Tuition', amountCents: amount, cadence: 'monthly' });
-  for (const f of await admin.billing.familyFees({ familyId: fam.id })) await admin.billing.assignFee({ enrollmentId: f.enrollmentId, feePlanId: plan.id });
+  await admin.billing.assignFee({ studentId: s.id, feePlanId: plan.id });
   await admin.billing.generateFamily({ familyId: fam.id, periodKey: '2026-06', label: 'Tuition — Jun 2026', dueDate: due });
   return fam.id;
 }

@@ -180,7 +180,7 @@ export async function buildFamilyStatementHtml(familyId: string, baseUrl: string
 
   <div class="signup">
     <img src="${qrDataUri}" alt="Parent portal signup QR code" />
-    <div class="cap"><b>Sign up for the parent portal</b>Scan to see grades, schedules, report cards, and pay online.<br /><span class="muted">${esc(signupUrl)}</span></div>
+    <div class="cap"><b>Sign up for the parent portal</b>Scan to see your balance and pay online.<br /><span class="muted">${esc(signupUrl)}</span></div>
   </div>
 
   <footer>${esc(schoolName)} · This statement reflects activity as of ${esc(printedOn)}.</footer>

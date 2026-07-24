@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 OpenMasjid-Solutions
 /**
- * Staff user management (CLAUDE.md §12): admin creates teacher/finance accounts with a
- * temporary password (forced change on first login), can disable them (revokes live
- * sessions on the next request via getSession's status re-check) and reset passwords.
- * Admin-only; never returns password hashes; audited.
+ * Staff user management (CLAUDE.md §12): admin creates finance accounts with a temporary
+ * password (forced change on first login), can disable them (revokes live sessions on the
+ * next request via getSession's status re-check) and reset passwords. Admin-only; never
+ * returns password hashes; audited.
  */
 import { z } from 'zod';
 import { TRPCError } from '@trpc/server';
-import { eq, inArray } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { router, adminProcedure, auditActor } from './trpc';
 import { db } from '../db';
 import { users } from '../db/schema';
@@ -25,12 +25,12 @@ export const staffRouter = router({
     db
       .select({ id: users.id, username: users.username, displayName: users.displayName, role: users.role, status: users.status, phone: users.phone, mustChangePassword: users.mustChangePassword })
       .from(users)
-      .where(inArray(users.role, ['teacher', 'finance']))
+      .where(eq(users.role, 'finance'))
       .all(),
   ),
 
   create: adminProcedure
-    .input(z.object({ username: USERNAME, displayName: z.string().trim().max(120).optional(), role: z.enum(['teacher', 'finance']), phone: z.string().trim().max(40).optional(), tempPassword: TEMP_PW }))
+    .input(z.object({ username: USERNAME, displayName: z.string().trim().max(120).optional(), role: z.literal('finance'), phone: z.string().trim().max(40).optional(), tempPassword: TEMP_PW }))
     .mutation(async ({ ctx, input }) => {
       if (db.select({ id: users.id }).from(users).where(eq(users.username, input.username)).get()) {
         throw new TRPCError({ code: 'CONFLICT', message: 'That username is already taken.' });

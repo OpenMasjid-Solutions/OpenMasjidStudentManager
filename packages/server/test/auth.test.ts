@@ -15,10 +15,9 @@ let testRouter: any;
 
 beforeAll(async () => {
   app = await freshApp();
-  const { router, adminProcedure, teacherProcedure, financeProcedure, parentProcedure, protectedProcedure } = app.trpc;
+  const { router, adminProcedure, financeProcedure, parentProcedure, protectedProcedure } = app.trpc;
   testRouter = router({
     adminOnly: adminProcedure.query(() => 'ok'),
-    teacherOnly: teacherProcedure.query(() => 'ok'),
     financeOnly: financeProcedure.query(() => 'ok'),
     parentOnly: parentProcedure.query(() => 'ok'),
     anyAuth: protectedProcedure.query(({ ctx }) => ctx.session.role),
@@ -138,7 +137,7 @@ describe('login + origin policy', () => {
 
 describe('session-use origin policy (middleware)', () => {
   const adminSession = { role: 'admin', source: 'local', username: 'admin' };
-  const teacherSession = { role: 'teacher', source: 'local', username: 't' };
+  const financeSession = { role: 'finance', source: 'local', username: 'f' };
   const parentSession = { role: 'parent', source: 'local', username: 'p' };
 
   it('admin procedure works with an admin session on the LAN', async () => {
@@ -155,13 +154,13 @@ describe('session-use origin policy (middleware)', () => {
     });
   });
 
-  it('teacher/finance/parent work over the tunnel', async () => {
-    await expect(testCaller({ origin: 'tunnel', session: teacherSession }).teacherOnly()).resolves.toBe('ok');
+  it('finance/parent work over the tunnel', async () => {
+    await expect(testCaller({ origin: 'tunnel', session: financeSession }).financeOnly()).resolves.toBe('ok');
     await expect(testCaller({ origin: 'tunnel', session: parentSession }).parentOnly()).resolves.toBe('ok');
   });
 
   it('a non-admin cannot reach an admin procedure (role wall)', async () => {
-    await expect(testCaller({ origin: 'lan', session: teacherSession }).adminOnly()).rejects.toMatchObject({
+    await expect(testCaller({ origin: 'lan', session: financeSession }).adminOnly()).rejects.toMatchObject({
       code: 'FORBIDDEN',
     });
     await expect(testCaller({ origin: 'lan', session: parentSession }).financeOnly()).rejects.toMatchObject({

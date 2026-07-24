@@ -10,12 +10,7 @@ import { ADMIN_ITEMS, type Section } from '../../components/Dock';
 import { trpc } from '../../lib/trpc';
 import { Dashboard } from './Dashboard';
 import { Directory } from './Directory';
-import { Classes } from './Classes';
-import { Timetable } from './Timetable';
-import { Exams } from './Exams';
-import { Admissions } from './Admissions';
 import { Billing } from './Billing';
-import { Reports } from './Reports';
 import { Staff } from './Staff';
 import { Settings } from './Settings';
 
@@ -31,18 +26,8 @@ export function AdminApp() {
           <Dashboard onNavigate={setSection} />
         ) : section === 'directory' ? (
           <Directory />
-        ) : section === 'classes' ? (
-          <Classes />
-        ) : section === 'timetable' ? (
-          <Timetable />
-        ) : section === 'exams' ? (
-          <Exams />
-        ) : section === 'admissions' ? (
-          <Admissions />
         ) : section === 'billing' ? (
           <Billing />
-        ) : section === 'reports' ? (
-          <Reports />
         ) : section === 'staff' ? (
           <Staff />
         ) : (

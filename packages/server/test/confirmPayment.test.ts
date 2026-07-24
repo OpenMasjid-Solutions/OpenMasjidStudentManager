@@ -9,7 +9,7 @@ import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { eq } from 'drizzle-orm';
 import type Stripe from 'stripe';
 import { freshApp, makeCtx } from './harness';
-import { guardianUsers, guardians, guardianFamilies, invites, paymentAllocations, payments, invoiceItems, invoices, enrollmentFees, feePlans, enrollments, classes, terms, students, families, sessions, users, settings } from '../src/db/schema';
+import { guardianUsers, guardians, guardianFamilies, invites, paymentAllocations, payments, invoiceItems, invoices, studentFees, feePlans, students, families, sessions, users, settings } from '../src/db/schema';
 import type { Role } from '../src/db/schema';
 
 let app: Awaited<ReturnType<typeof freshApp>>;
@@ -31,20 +31,17 @@ beforeAll(async () => {
 });
 beforeEach(() => {
   const { db } = app.dbmod;
-  for (const t of [guardianUsers, guardians, guardianFamilies, invites, paymentAllocations, payments, invoiceItems, invoices, enrollmentFees, feePlans, enrollments, classes, terms, students, families, sessions, users, settings]) db.delete(t).run();
+  for (const t of [guardianUsers, guardians, guardianFamilies, invites, paymentAllocations, payments, invoiceItems, invoices, studentFees, feePlans, students, families, sessions, users, settings]) db.delete(t).run();
 });
 
 /** A family with a $50 open invoice + a real parent account linked to it (via the invite door). */
 async function familyWithParent() {
   const admin = caller('admin');
-  const term = await admin.classes.termCreate({ name: 'T1', isCurrent: true });
-  const cls = await admin.classes.classCreate({ termId: term.id, name: 'Maktab A', type: 'maktab' });
   const fam = await admin.people.familyCreate({ name: 'Ismail' });
   const s = await admin.people.studentCreate({ familyId: fam.id, firstName: 'Yusuf', lastName: 'Ismail' });
-  await admin.classes.enroll({ classId: cls.id, studentId: s.id });
   const g = await admin.people.guardianCreate({ familyId: fam.id, name: 'Abu Yusuf', email: 'abu@example.com' });
   const plan = await admin.billing.feePlanCreate({ name: 'Tuition', amountCents: 5000, cadence: 'monthly' });
-  for (const f of await admin.billing.familyFees({ familyId: fam.id })) await admin.billing.assignFee({ enrollmentId: f.enrollmentId, feePlanId: plan.id });
+  await admin.billing.assignFee({ studentId: s.id, feePlanId: plan.id });
   await admin.billing.generateFamily({ familyId: fam.id, periodKey: '2026-07', label: 'Tuition — Jul 2026', dueDate: '2026-07-01' });
   const inv = await admin.auth.inviteCreate({ guardianId: g.id });
   await pub().auth.inviteAccept({ token: inv.token, password: 'parent-pass-1234' });
@@ -98,7 +95,7 @@ describe('settings — Stripe account picker (§10)', () => {
     expect(r).toMatchObject({ ok: false, ready: false }); // loadStripeKeys can't reach the Fabric offline
     expect(settingsMod.getChosenStripeAccount()).toBe('acct_123');
     expect(await admin.settings.stripeAccountsGet()).toMatchObject({ chosenId: 'acct_123' });
-    for (const role of ['finance', 'teacher', 'parent'] as Role[]) {
+    for (const role of ['finance', 'parent'] as Role[]) {
       await expect(caller(role).settings.stripeAccountsGet()).rejects.toMatchObject({ code: 'FORBIDDEN' });
     }
   });

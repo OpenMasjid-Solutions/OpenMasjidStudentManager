@@ -5,7 +5,9 @@
 
 > This file is the single source of truth for the OpenMasjidStudents project. Read it fully before writing any code. When in doubt, follow this document over your own assumptions. If something here is ambiguous, ask before guessing.
 >
-> **Product target, in one line:** QuickSchools-class school management — SIS, gradebook, scheduling, admissions, report cards, transcripts, custom reports — **rebuilt madrasa-first and self-hosted**, with QuickSchools' fee module **replaced entirely by our own Fabric billing** (Donations site, Kiosk, parent-portal Stripe, autopay, cash).
+> ⚠️ **SCOPE PIVOT (v0.35.0).** This app was **descoped from a full SIS to tuition/fee management only.** All academics were **removed**: classes, scheduling/timetable, attendance, gradebook, grading scales, merit points, comment bank, exams, report cards, transcripts, term finals, the admissions pipeline (incl. the public `/apply` form), the Report Creator, custom student fields, student notes/incidents, and the **teacher** role. What remains is families/students (name + PIN), fee plans, invoices, the ledger, manual + Stripe/portal/autopay payments, statements, and the `students/billing` Fabric provider. **Fees are now assigned PER STUDENT** (`student_fees`), not per class enrollment. **The code is authoritative** — where a section below still describes an academic feature, it no longer applies; §11 (Fabric contract), §12 (auth/origin), §13 (payments), §14 (security), §16, §19 remain in force.
+>
+> **Product target, in one line:** self-hosted **tuition & fee management for a madrasa** — families/students with name + PIN, per-student fee plans, family invoices, a derived ledger, and payments by cash/Stripe (parent portal + autopay) **plus the OpenMasjid Donations site and Kiosk** over the Fabric.
 >
 > This app depends on two sibling work orders that land in other repos: **`OpenMasjidOS/docs/FABRIC_APP_LINK_AND_TUNNEL.md`** (the Fabric app-to-app broker + Cloudflare uplink) and the `STUDENTS_INTEGRATION.md` briefs in **OpenMasjidDonations** and **OpenMasjidKiosk**. §11 of this file is the shared contract all four repos must agree on. If the contract changes here, it changes everywhere.
 
@@ -13,9 +15,9 @@
 
 ## 1. What we are building (one paragraph)
 
-**OpenMasjidStudents** is a self-hosted school-management app **built for madāris** — weekend maktab, nazrah and hifz programs, and multi-year ʿālim courses — that runs as an **OpenMasjidOS app**: one Docker container, installed from the App Store, all data on the masjid's own hardware. It is a **four-role app with four UIs**: **admins** manage everything (LAN-only, by design); **teachers** take attendance, run their gradebooks, award merit points, and enter exam scores for their own classes; a **finance manager** runs billing; and **parents** get their own portal with their kids' grades, weekly schedule, merit points, **report cards and transcripts**, plus the family balance — **payable by card right in the app (Stripe)**, with **autopay**. Each term the admin defines the **exams** and which classes sit them; once teachers fill in the scores, the app **pre-makes every report card as a PDF** (per student or whole class), files it on the student record, and — across the years — builds each student's **cumulative transcript**, the document an ʿālim-course graduate actually leaves with. An **admissions pipeline** takes a family from a public enquiry form to an enrolled, invoiced student in one click, and a **Report Creator** lets the office build its own saved reports over any of the data. Teachers, finance, and parents all work over the **Cloudflare uplink the OS provides**; the admin surface stays on the masjid LAN. Payments made through **OpenMasjidDonations** and **OpenMasjidKiosk** flow in automatically over the **OpenMasjidOS Fabric**, and finance can record cash/Zelle/check by hand with attached proof.
+**OpenMasjidStudents** is a self-hosted **tuition & fee management** app **built for madāris** that runs as an **OpenMasjidOS app**: one Docker container, installed from the App Store, all data on the masjid's own hardware. It is a **three-role app**: **admins** manage families, students, fee plans and settings (LAN-only, by design); a **finance manager** runs billing (invoices, the ledger, manual + card payments); and **parents** get their own phone-first portal with the family balance and one unified payment history — **payable by card right in the app (Stripe)**, with **autopay** and saved cards. Every student gets an auto-generated **name + PIN**; fees are assigned **per student** as **fee plans** (monthly / per-term / one-time) and rolled up into a **per-family invoice** each period. Finance records cash/Zelle/check by hand, and prints **statements** carrying each child's PIN and a portal-signup QR. Finance and parents work over the **Cloudflare uplink the OS provides**; the admin surface stays on the masjid LAN. Tuition paid with a **child's name + PIN** through **OpenMasjidDonations** and **OpenMasjidKiosk** flows automatically into the same ledger over the **OpenMasjidOS Fabric** — this app is the **provider** of the `students/billing` capability those apps consume.
 
-Think: **"QuickSchools for the madrasa, in one container the masjid owns — and the money side is ours, end to end."**
+Think: **"the madrasa's tuition & fee desk, in one container the masjid owns — and payable anywhere: the portal, the kiosk, or the donation site."**
 
 ---
 
@@ -29,7 +31,7 @@ Think: **"QuickSchools for the madrasa, in one container the masjid owns — and
 | **`OpenMasjidDonations`** | **Consumer** of `students/billing`: its campaign system gains a **`tuition` campaign type** that is *fully managed by this container* — label from `info`, flow is **student name + PIN** → balance → pay. Brief: `docs/STUDENTS_INTEGRATION.md` there. |
 | **`OpenMasjidKiosk`** | **Consumer** of `students/billing`: same **`tuition` campaign type** as a kiosk tile (Stripe Reader M2), same name + PIN flow. Brief: `docs/STUDENTS_INTEGRATION.md` there. |
 
-**App identity:** app id **`students`** (compose project `omos-students`, data at `/opt/openmasjid/apps/students/`), display name **OpenMasjid Students**, image **`ghcr.io/openmasjid-solutions/openmasjid-students:<semver>`** (public, multi-arch amd64+arm64), category **`admin`**.
+**App identity:** app id **`students`** (compose project `omos-students`, data at `/opt/openmasjid/apps/students/`), display name **OpenMasjid Students**, repo **`OpenMasjid-Solutions/OpenMasjidStudents`**, image **`ghcr.io/openmasjid-solutions/openmasjidstudents:<semver>`** (public, multi-arch amd64+arm64; the CI derives the image name from the repo basename lowercased — no hyphen), category **`admin`**.
 
 **Scope rule:** this app never talks to Donations or Kiosk directly, and they never talk to it directly — **everything crosses through the OS core's Fabric broker** (§11). The one external system this app *does* talk to directly is **Stripe** (portal payments, autopay, webhooks), using keys fetched over the Fabric.
 
@@ -51,48 +53,13 @@ Think: **"QuickSchools for the madrasa, in one container the masjid owns — and
 
 ### ✅ In scope (v1)
 
-**Students & SIS (the record of record)**
+**People (the billing subjects)**
 - Students (name, DOB optional, status active/withdrawn, notes) grouped into **families**; **guardians** (name, phone, email) linked to families (a guardian can span multiple families); **emergency contacts** (flag guardians and/or add extra contacts per family).
-- **Custom fields**: admin defines field definitions (`text | number | date | select`) once; values live on each student; usable in the Report Creator and CSV exports. (This is how a madrasa tracks "previous madrasa", "juz completed at intake", "walī name" — without us hardcoding any of it.)
-- **Documents on file**: per-student uploads (reuses the attachments infra; visibility `admin-only` or `staff`), e.g. registration forms, ijāzah copies.
-- **Incident / disciplinary records**: date, category, description, action taken, recorded-by; per-incident **"visible to parents" toggle, default OFF**.
-- **Student notes (activity log)**: running staff-only notes on a student.
-- **Student PINs**: every student gets an **auto-generated numeric PIN (6 digits, CSPRNG) at registration by the admin**. Student **name + PIN** is how a parent pays at the Donations site / Kiosk and one of the doors into portal self-registration. Finance/admin can view and **regenerate** a PIN (audited); PINs are printed on statements next to each child.
+- **Student PINs**: every student gets an **auto-generated numeric PIN (6 digits, CSPRNG) at registration**. Student **name + PIN** is how a parent pays at the Donations site / Kiosk and one door into portal self-registration. Finance/admin can view and **regenerate** a PIN (audited); PINs are printed on statements next to each child.
 
-**Staff records**
-- Teacher/staff profiles (contact info, admin-only notes); each teacher sees **their own weekly schedule** and class list on login.
-
-**Classes & scheduling**
-- **Classes — add as many as the madrasa runs.** Each class: free-text name, a **type** (`maktab | hifz | nazrah | alim | custom` — custom carries its own label; so "Sarf — Year 1" and "Nahw — Year 1" are two *alim* classes, hifz halaqahs are *hifz* classes), schedule label, academic **term**, an ordered list of **subjects** (free text — a hifz class might have "Sabaq / Sabqī / Manzil / Tajwīd"), **teacher assignment**, and **enrollments** (student ↔ class per term). Type drives filtering and report/transcript headers.
-- **Weekly timetable (manual — no auto-scheduler in v1)**: class sessions (day of week, start–end, room label). Views **by class, by teacher, by student**; the portal shows each kid's week; printable. **Soft conflict warnings** when a teacher or room is double-booked — warn, never block (madrasa reality: the same ustādh sometimes genuinely covers two rooms).
-
-**Teacher tools**
-- **Attendance** per class per day: `present | absent | late | excused`, bulk "all present", editable same-day; later edits allowed but **audited**.
-- **Gradebook**: assignments/assessments per class (title, date, max points, category + weight), scores per student, class average. Entered grades are immediately visible in the parent portal (publish workflow is 🔭 later — tell teachers this in the UI).
-- **Gradebook upgrades (QuickSchools-parity)**:
-  - **Grading scales** — admin defines any number of scales (band label + min %). Ships with three editable defaults: *Percentage*, *A–F*, and a **madrasa scale**: `Mumtāz / Jayyid Jiddan / Jayyid / Maqbūl / Rāsib`. A class picks its scale.
-  - **Final-grade formula per class** — weighted components: coursework categories (their gradebook weights) + exam weight, summing to 100%. Weighted components only — **no arbitrary expression language**.
-  - **Gradebook history** — every gradebook save is snapshotted; admin can view (and restore from) any snapshot. This is the audit log made visible, not a separate truth.
-- **Exam score entry**: for every admin-defined exam assigned to their class, a students × subjects grid — score, or `absent` / `exempt` (explicit states, never blanks) — plus an optional per-student **term remark**. Autosaves; a progress bar shows how much of the class is filled in.
-- **Merit points (very madrasa)**: teachers award (or deduct) points per student against **admin-defined categories with default point values** — shipped editable defaults: *Ādāb, Sunnah practice, Hifz milestone, Helping others*. Term totals per student; parents see their own kids' points and history; optional per-class staff-side leaderboard; optional merit line on the report card (admin toggle). No public leaderboards.
-- **Comment bank**: reusable remark snippets — a **shared bank** (admin-managed) plus each teacher's **personal bank** — insertable into term remarks and report-card comments.
-
-**Exams, report cards & transcripts (the term-end machine)**
-- **Exams**: per term the admin creates the exam list (e.g. "Mid-Term", "Final") and **assigns each exam to classes**. Assignment **snapshots the class's subjects at that moment** into per-subject **max marks** (default 100, editable per subject) — editing a class's subjects later never corrupts a past exam.
-- **Completion dashboard**: per exam × class, scored-vs-enrolled counts across teachers; admin sees at a glance when "all the teachers have filled out the scores."
-- **Report-card generation**: once an exam set for the term is complete (or force-generated with a warning — real life has gaps), the app **pre-makes a PDF report card for every student**: school name, term, class + type, per-subject scores across the term's exams, totals + percentage and the class's **scale band**, attendance summary for the term, merit total (if enabled), teacher remark, generated date + version. Download/print **per individual student or the entire class as one combined, page-per-student PDF**.
-- **Immutable versions, filed on the record**: each generation is a stored, versioned PDF on the student's record — regenerating after a score fix creates **version N+1** (audited); old versions are never edited or deleted.
-- **Publish to parents**: generated cards start **unpublished**; admin publishes per class (or all) with one click. Parents see and download **published** report cards in the portal; admins (and teachers, for their own classes) can look up any version anytime.
-- **Term finals**: closing a term computes, per student per class, a **final grade** (the class's formula + scale) and **freezes it** in `term_finals` — the raw material transcripts are built from. Reopening a term to fix something regenerates the affected finals (audited).
-- **Transcripts (the ʿālim-course payoff)**: a student's **cumulative multi-year record** — every term, every class (with type), the frozen final grade and scale band — rendered as a versioned PDF on the same pipeline and template family as report cards. Admin generates on demand (single student or batch); optional **publish** makes it visible in the parent portal. Immutable versions, same as report cards. (No credit-hours/GPA math in v1 — see ❌.)
-
-**Admissions (madrasa intake)**
-- A **public enquiry/application form** served over the tunnel — **no login**: guardian name + contact, child name + DOB, program interest (class types), plus any admin-selected custom fields. Hostile-input rules apply (§14): strict zod, length caps, rate-limited per IP, honeypot field, optional Turnstile hook. Submissions create pipeline entries and notify the admin (Fabric notify).
-- **Pipeline**: `enquiry → application → accepted | waitlisted | declined → enrolled`, with per-applicant staff notes. **"Enroll" is one click**: creates the family + student (+ guardian, PIN auto-generated), enrolls into the chosen class, assigns the fee plan → generates the first invoice, and sends the parent-portal invite. Admin and finance manage the pipeline; CSV export.
-
-**Finance (billing — ours, replacing QuickSchools' fee module wholesale)**
-- **Fee plans**: amount (integer cents), cadence `monthly | per-term | one-time`, assignable per enrollment; per-family fixed or % **discount** line.
-- **Invoices** per family (generated for a month/term via a "Generate" action; optional auto-generate), line items, statuses `open | partially_paid | paid | void`, due dates.
+**Finance (billing — the whole app)**
+- **Fee plans**: amount (integer cents), cadence `monthly | per-term | one-time`, **assigned per STUDENT** (`student_fees`); per-family fixed or % **discount** line.
+- **Invoices** per family (generated for a month/term via a "Generate" action; optional auto-generate), line items (one per student × plan), statuses `open | partially_paid | paid | void`, due dates.
 - **Family ledger & balance**: derived balance; payments auto-allocate oldest-due-first; overpayment becomes family **credit**.
 - **External payments** arrive over Fabric from Donations and Kiosk (§11); **portal and autopay payments** (§13) land in the same ledger. Finance *sees* the channel, Stripe reference, and status without doing anything.
 - **Manual payments**: channel `cash | zelle | check | other`, amount, date, memo, attached **proof** (jpg/png/webp/pdf, ≤10 MB), served only to `finance`/`admin`.
@@ -100,38 +67,33 @@ Think: **"QuickSchools for the madrasa, in one container the masjid owns — and
 - **Stripe reconciliation** (safety net): daily job + on-demand button for PaymentIntents tagged `purpose=students-billing` (§11.4).
 - Parent-account tools: create/invite guardians, resend invites, disable accounts, see autopay status per family.
 
-**Parent portal (tunnel-first — this is the headline)**
-- Login lands on **My family**: kids, their classes and **weekly schedule**, **grades**, **attendance**, **merit points**, and **published report cards & transcripts (PDF download)** — plus family balance, open invoices, and one unified payment history (kiosk / donation site / portal / autopay / cash).
-- **Pay now**: pay full balance or a chosen amount/invoices by card, in-app, via **Stripe Elements**.
+**Parent portal (tunnel-first — the headline)**
+- Login lands on **My family**: the kids (with their PINs), the family balance, open invoices, and one unified payment history (kiosk / donation site / portal / autopay / cash).
+- **Pay now**: pay the full balance or a chosen amount by card, in-app, via **Stripe Elements**.
 - **Saved cards**: add/remove payment methods (SetupIntents, off-session capable), pick a default.
 - **Autopay**: per-family toggle — charge the default card automatically when invoices come due; decline handling with retries + emails; parent can turn it off any time (§13).
-- Receipts by email; profile basics (name, phone, password). **Shared incidents** (the ones explicitly toggled visible) appear read-only.
-
-**Report Creator (the office's own reports)**
-- A **saved-report builder over predefined datasets** — *never raw SQL*: datasets are code-defined views over students (+ custom fields), attendance, enrollments, gradebook, exam results, term finals, merit, admissions, invoices/payments. Pick columns → filter → sort → optional group-by with count/sum. Run → table on screen, **export CSV**, print view. Save + share (choose which roles see a saved report).
-- **Dataset access is role-scoped at the registry**: admin sees all datasets; finance sees billing + directory datasets only; teachers/parents get no Report Creator in v1.
+- Receipts by email; profile basics (name, phone, password).
 
 **Platform integration**
-- Fabric **appearance inherit**, **SSO** (`sso: true`, LAN admin only), **notifications** (`notifications: true` — payments, autopay failures, new admissions to the masjid webhook).
-- **Cloudflare uplink** (`tunnel: true`): stable public HTTPS URL, injected as `OPENMASJID_PUBLIC_URL`; used for parent/teacher/finance access, the public admissions form, QR links, and **inbound Stripe webhooks**.
-- **`https: true`** in the manifest — this app embeds Stripe Elements, which requires a secure context (this is exactly what the flag exists for).
-- **SMTP (in-app admin setting, strongly recommended)**: parent invites, password resets, payment receipts, autopay failure notices. **Transactional only in v1** — bulk messaging is 🔭 later. Without SMTP the portal still works — invites become copy/print links, resets go through the office.
-- **Audit log** on every sensitive write: grades, attendance edits, exam scores, invoices, payments, autopay changes, role/user changes, PIN regeneration, incidents, term close/reopen, report-card/transcript generation + publish — who, when, before → after.
-- **Access-origin policy**: `admin` sessions work **only on the masjid LAN**; `teacher`, `finance`, `parent` work on LAN **and** over the Cloudflare uplink (§12.4 — hard constraint).
-- CSV export throughout; i18n (i18next) + full **RTL**; light/dark via Fabric appearance; `prefers-reduced-motion`.
+- Fabric **appearance inherit**, **SSO** (`sso: true`, LAN admin only), **notifications** (`notifications: true` — payments, autopay failures to the masjid webhook), and the **provider** side of `students/billing` (§11).
+- **Cloudflare uplink** (`tunnel: true`): stable public HTTPS URL, injected as `OPENMASJID_PUBLIC_URL`; used for parent/finance access, QR links, and inbound Stripe webhooks.
+- **`https: true`** in the manifest — the parent portal embeds Stripe Elements, which requires a secure context.
+- **SMTP (in-app admin setting, strongly recommended)**: parent invites, password resets, payment receipts, autopay failure notices. **Transactional only in v1**. Without SMTP the portal still works — invites become copy/print links, resets go through the office.
+- **Audit log** on every sensitive write: fee assignment, invoices, payments, reversals, autopay changes, role/user changes, PIN regeneration — who, when, before → after.
+- **Access-origin policy**: `admin` sessions work **only on the masjid LAN**; `finance` and `parent` work on LAN **and** over the Cloudflare uplink (§12.4 — hard constraint).
+- i18n (i18next) + full **RTL**; light/dark via Fabric appearance; `prefers-reduced-motion`.
 
-### ❌ Out of scope (v1) — do not build these
+### ❌ Out of scope — do not build these
 
+- **All academics / SIS** (removed in the v0.35.0 pivot): classes, scheduling/timetable, attendance, gradebook, grading scales, merit, comment bank, exams, report cards, transcripts, term finals, admissions/the `/apply` form, the Report Creator, custom student fields, documents-on-file, student notes/incidents, and the **teacher/student** roles. Do not reintroduce any of these.
 - **Stripe Billing subscriptions/invoices.** Autopay is saved-card + off-session PaymentIntents driven by **our** scheduler and **our** invoices (§13.3). Our ledger is the source of truth; never mirror it into Stripe objects.
 - Card-present hardware in this app (that's Kiosk's job); ACH/bank debits; wallets beyond what Elements gives for free.
-- **Student logins** (deferred with the student role), the **auto/master scheduler** (constraint solver), **bulk messaging** (email blasts / SMS / voice), GPA scales, credit hours, class rank.
-- Arbitrary-SQL or formula-language reporting — the Report Creator is datasets + pickers, full stop.
-- Parent-initiated data edits (changes go through the office in v1); parent↔teacher messaging; push notifications.
-- Multi-tenant anything (one install = one masjid); payroll, staff HR, zakat handling; a public REST API beyond §11 and the admissions form.
+- Parent-initiated data edits (changes go through the office); push notifications.
+- Multi-tenant anything (one install = one masjid); payroll, staff HR, zakat handling; a public REST API beyond §11.
 
 ### 🔭 Later (deferred by decision — design for, don't implement)
 
-From the QuickSchools parity review, explicitly parked: **student role** · **auto/master scheduler** · **messaging blasts (email/SMS/voice)** · **sign-in/sign-out desk** · **seating charts (+ seating-chart attendance)** · **facilities booking** · **online forms & approvals (permission slips)** · **parent-teacher appointment booking** · **announcements board / forums**. Plus from before: grade-publish workflow for day-to-day gradebook items; **hifz tracking** (sabaq/sabqī/manzil) as a first-class module (v1 handles hifz via free-text subjects + exams); ACH autopay; TOTP 2FA for staff.
+Grade-publish and the whole SIS were removed, not parked — see ❌. Payment-side deferrals only: ACH autopay; TOTP 2FA for staff.
 
 ---
 

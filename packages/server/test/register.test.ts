@@ -9,7 +9,7 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { freshApp, makeCtx } from './harness';
-import { invites, guardianUsers, guardians, guardianFamilies, enrollments, classes, terms, students, families, sessions, users, settings } from '../src/db/schema';
+import { invites, guardianUsers, guardians, guardianFamilies, students, families, sessions, users, settings } from '../src/db/schema';
 import type { Role } from '../src/db/schema';
 
 let app: Awaited<ReturnType<typeof freshApp>>;
@@ -28,7 +28,7 @@ afterAll(() => {
 });
 beforeEach(() => {
   const { db } = app.dbmod;
-  for (const t of [invites, guardianUsers, guardians, guardianFamilies, enrollments, classes, terms, students, families, sessions, users, settings]) db.delete(t).run();
+  for (const t of [invites, guardianUsers, guardians, guardianFamilies, students, families, sessions, users, settings]) db.delete(t).run();
   // SMTP configured (fast-failing host) so the door is open; sendInvite fails but the invite is minted.
   settingsMod.setSmtp({ host: '127.0.0.1', port: 1, secure: false, user: '', pass: '', from: 'School <o@test.org>' });
 });
@@ -36,11 +36,8 @@ beforeEach(() => {
 /** A family with a student (known PIN) + a guardian with an on-file email. */
 async function scenario() {
   const a = admin();
-  const term = await a.classes.termCreate({ name: 'T1', isCurrent: true });
-  const cls = await a.classes.classCreate({ termId: term.id, name: 'Maktab A', type: 'maktab' });
   const fam = await a.people.familyCreate({ name: 'Ismail' });
   const s = await a.people.studentCreate({ familyId: fam.id, firstName: 'Yusuf', lastName: 'Ismail' });
-  await a.classes.enroll({ classId: cls.id, studentId: s.id });
   await a.people.guardianCreate({ familyId: fam.id, name: 'Abu Yusuf', email: 'Abu@Example.com' });
   return { pin: s.pin };
 }

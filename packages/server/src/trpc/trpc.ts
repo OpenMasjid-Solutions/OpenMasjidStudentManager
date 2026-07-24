@@ -54,14 +54,10 @@ function requireAuth(allowed: readonly Role[] | 'any') {
 
 export const protectedProcedure = t.procedure.use(requireAuth('any'));
 export const adminProcedure = t.procedure.use(requireAuth(['admin']));
-export const teacherProcedure = t.procedure.use(requireAuth(['teacher']));
 export const financeProcedure = t.procedure.use(requireAuth(['finance']));
 export const parentProcedure = t.procedure.use(requireAuth(['parent']));
-/** Directory / student-record reads that finance shares with admin (§5). */
+/** Directory + billing reads/writes that finance shares with admin (§5). */
 export const adminOrFinanceProcedure = t.procedure.use(requireAuth(['admin', 'finance']));
-/** Class-scoped teacher tools that admin also performs (attendance, gradebook — §5). The
- *  procedure allows both roles; the router still checks teacher→class assignment per call. */
-export const adminOrTeacherProcedure = t.procedure.use(requireAuth(['admin', 'teacher']));
 
 /** The audit actor for the current session (§14) — SSO admins have no user row. */
 export function auditActor(ctx: Context): { userId: string | null; role: string; name: string | null } {

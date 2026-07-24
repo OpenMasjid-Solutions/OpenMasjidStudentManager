@@ -17,13 +17,9 @@ import { config } from './config';
 import { makeLog } from './logger';
 import { runMigrations } from './db';
 import { purgeExpiredSessions } from './auth/sessions';
-import { seedGradingDefaults } from './grades/scales';
-import { seedMeritDefaults } from './merit/categories';
 import { appRouter, type AppRouter } from './trpc/router';
 import { createContext } from './trpc/trpc';
-import { registerReportRoutes } from './reports/routes';
 import { registerStatementRoutes } from './billing/statementRoutes';
-import { registerApplyRoute } from './admissions/apply';
 import { registerFabricProvider } from './fabric/provider';
 import { loadStripeKeys } from './payments/stripe';
 import { startSchedulers } from './payments/scheduler';
@@ -31,16 +27,12 @@ import { stripBasePath } from './http/basePath';
 
 const log = makeLog('main');
 
-// Paths served/handled outside the SPA (the web app is a client-side router). NOTE: /apply is
-// deliberately NOT here — POST /apply is the public form's Fastify route, but GET /apply must fall
-// through to the SPA (the anonymous enquiry page); the POST route is matched before the fallback.
-const NON_SPA_PREFIXES = ['/trpc', '/api', '/fabric', '/reports', '/statements', '/healthz'];
+// Paths served/handled outside the SPA (the web app is a client-side router).
+const NON_SPA_PREFIXES = ['/trpc', '/api', '/fabric', '/statements', '/healthz'];
 
 async function main(): Promise<void> {
   // Apply committed migrations before accepting traffic, then clear stale sessions.
   runMigrations();
-  seedGradingDefaults(); // the three shipped grading scales (idempotent)
-  seedMeritDefaults(); // the shipped merit categories (idempotent)
   purgeExpiredSessions();
   // Best-effort (never blocks boot): fetch the chosen account's Stripe keys from the Fabric. There is
   // NO Stripe webhook — payments record via the Fabric record-payment calls, the portal's
@@ -91,14 +83,8 @@ async function main(): Promise<void> {
     trpcOptions: { router: appRouter, createContext } as FastifyTRPCPluginOptions<AppRouter>['trpcOptions'],
   });
 
-  // Authed report-card PDF serving (its own role × origin checks; §14). Before the SPA fallback.
-  registerReportRoutes(app);
-
   // Authed printable family statements (admin LAN-only / finance LAN+tunnel; §5, §14).
   registerStatementRoutes(app);
-
-  // Anonymous public admissions form (§4, §14): its own zod + honeypot + rate-limit gates.
-  registerApplyRoute(app);
 
   // Fabric provider /fabric/billing/* (§11): secret-gated, tunnel-blocked; the students/billing capability.
   registerFabricProvider(app);

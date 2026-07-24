@@ -1,22 +1,19 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 OpenMasjid-Solutions
-/** Parent portal — My Family (read-only slice, CLAUDE.md §4/§15). Phone-first: a big balance
- *  card, the family's kids (with their PINs), open invoices, and recent payments. Grades /
- *  schedule / merit / report cards arrive in later slices. Everything is family-scoped server-side. */
+/** Parent portal — My Family (CLAUDE.md §4/§15). Phone-first: a big balance card, the family's
+ *  kids (with their PINs), open invoices, recent payments, pay-now, saved cards, and autopay.
+ *  Everything is family-scoped server-side. */
 import { motion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { Download, FileText } from 'lucide-react';
 import { staggerContainer, staggerItem } from '../../lib/motion';
 import { trpc } from '../../lib/trpc';
 import { formatMoney } from '../../lib/money';
-import { withBase } from '../../lib/base';
 import { PayNow } from './PayNow';
 import { PayMethods } from './PayMethods';
 
-export function FamilyHome({ onOpenChild }: { onOpenChild: (studentId: string, name: string) => void }) {
+export function FamilyHome() {
   const { t } = useTranslation();
   const q = trpc.portal.myFamily.useQuery();
-  const reportsQ = trpc.portal.myReports.useQuery();
   const payConfigQ = trpc.portal.payConfig.useQuery();
   const utils = trpc.useUtils();
 
@@ -56,10 +53,10 @@ export function FamilyHome({ onOpenChild }: { onOpenChild: (studentId: string, n
                 <div className="fam-empty">{t('family.noChildren')}</div>
               ) : (
                 fam.students.map((s) => (
-                  <button key={s.id} type="button" className="kid-row glass fx-glint" onClick={() => onOpenChild(s.id, `${s.firstName} ${s.lastName}`.trim())} style={{ width: '100%', textAlign: 'start', cursor: 'pointer' }}>
+                  <div key={s.id} className="kid-row glass">
                     <span className="kid-name">{s.firstName} {s.lastName}</span>
                     <span className="kid-pin"><span className="pin-lbl">{t('directory.pin')}</span>{s.pin}</span>
-                  </button>
+                  </div>
                 ))
               )}
             </section>
@@ -105,40 +102,6 @@ export function FamilyHome({ onOpenChild }: { onOpenChild: (studentId: string, n
           </motion.div>
         );
       })}
-
-      {/* Published report cards & transcripts — the documents families keep (§15). */}
-      {reportsQ.data?.children.some((c) => c.reportCards.length || c.transcripts.length) && (
-        <motion.section className="fam-section" variants={staggerItem}>
-          <h2>{t('family.reportCards')}</h2>
-          {reportsQ.data.children.map((c) =>
-            c.reportCards.length || c.transcripts.length ? (
-              <div key={c.studentId} style={{ marginBlockEnd: '0.7rem' }}>
-                <div className="row-sub" style={{ fontWeight: 600, marginBlockEnd: '0.4rem' }}>{c.name}</div>
-                {c.reportCards.map((r) => (
-                  <a key={r.id} className="list-row glass" href={withBase(`/reports/card/${r.id}`)} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>
-                    <span style={{ display: 'inline-flex', color: 'var(--color-primary)' }}><FileText size={18} /></span>
-                    <div className="row-main">
-                      <span className="row-title">{r.className}</span>
-                      <span className="row-sub">{t('family.reportCard')} · v{r.version}</span>
-                    </div>
-                    <span className="row-amt" style={{ color: 'var(--color-text-muted)' }}><Download size={16} /></span>
-                  </a>
-                ))}
-                {c.transcripts.map((tr) => (
-                  <a key={tr.id} className="list-row glass" href={withBase(`/reports/transcript/${tr.id}`)} target="_blank" rel="noopener noreferrer" style={{ color: 'inherit', textDecoration: 'none' }}>
-                    <span style={{ display: 'inline-flex', color: 'var(--color-gold)' }}><FileText size={18} /></span>
-                    <div className="row-main">
-                      <span className="row-title">{t('family.transcript')}</span>
-                      <span className="row-sub">v{tr.version}</span>
-                    </div>
-                    <span className="row-amt" style={{ color: 'var(--color-text-muted)' }}><Download size={16} /></span>
-                  </a>
-                ))}
-              </div>
-            ) : null,
-          )}
-        </motion.section>
-      )}
     </motion.div>
   );
 }

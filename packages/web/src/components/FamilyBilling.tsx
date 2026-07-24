@@ -48,6 +48,18 @@ export function FamilyBilling({ familyId, currency }: { familyId: string; curren
 
   const bal = billing.data?.balance;
   const activePlans = plans.data ?? [];
+  // Group the flat (student × assignment) rows by student: a student with no fee has one row with
+  // a null feeId; a student with N plans has N rows. Grouping lets us show every assigned plan AND
+  // always offer an "assign another" dropdown (multiple plans per student are allowed).
+  const feeGroups = (() => {
+    const m = new Map<string, { name: string; fees: { feeId: string; feePlanId: string; feePlanName: string; amountCents: number }[] }>();
+    for (const r of fees.data ?? []) {
+      const g = m.get(r.studentId) ?? { name: `${r.firstName} ${r.lastName}`.trim(), fees: [] };
+      if (r.feeId && r.feePlanId) g.fees.push({ feeId: r.feeId, feePlanId: r.feePlanId, feePlanName: r.feePlanName ?? '', amountCents: r.amountCents ?? 0 });
+      m.set(r.studentId, g);
+    }
+    return [...m.entries()];
+  })();
 
   return (
     <div className="win-content">
@@ -67,26 +79,31 @@ export function FamilyBilling({ familyId, currency }: { familyId: string; curren
       {/* Fees + discount */}
       <section className="section glass" style={{ padding: '1rem 1.1rem' }}>
         <div className="section-head"><h2>{t('billing.fees')}</h2></div>
-        {(fees.data ?? []).length === 0 ? (
-          <p className="muted" style={{ fontSize: '0.9rem' }}>{t('billing.noEnrollments')}</p>
+        {feeGroups.length === 0 ? (
+          <p className="muted" style={{ fontSize: '0.9rem' }}>{t('billing.noStudents')}</p>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-            {fees.data?.map((f) => (
-              <div key={f.enrollmentId + (f.feeId ?? '')} className="glass-inset" style={{ padding: '0.5rem 0.7rem', borderRadius: 'var(--radius-button)', display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-                <span style={{ flex: '1 1 10rem' }}>{f.firstName} {f.lastName} · <span className="muted">{f.className}</span></span>
-                {f.feeId ? (
-                  <>
-                    <span className="chip">{f.feePlanName} · {money(f.amountCents ?? 0)}</span>
-                    <button type="button" className="btn btn--ghost btn--sm" onClick={async () => { await unassign.mutateAsync({ id: f.feeId! }); await refresh(); }}>{t('billing.removeFee')}</button>
-                  </>
-                ) : (
-                  <select className="input glass-inset" style={{ flex: '0 1 12rem' }} defaultValue="" onChange={async (e) => { if (e.target.value) { await assign.mutateAsync({ enrollmentId: f.enrollmentId, feePlanId: e.target.value }); await refresh(); } }}>
-                    <option value="">{t('billing.assignFee')}</option>
-                    {activePlans.map((p) => <option key={p.id} value={p.id}>{p.name} · {money(p.amountCents)}</option>)}
-                  </select>
-                )}
-              </div>
-            ))}
+            {feeGroups.map(([studentId, g]) => {
+              const assigned = new Set(g.fees.map((f) => f.feePlanId));
+              const available = activePlans.filter((p) => !assigned.has(p.id));
+              return (
+                <div key={studentId} className="glass-inset" style={{ padding: '0.5rem 0.7rem', borderRadius: 'var(--radius-button)', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <span style={{ flex: '1 1 10rem' }}>{g.name}</span>
+                  {g.fees.map((f) => (
+                    <span key={f.feeId} className="chip" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
+                      {f.feePlanName} · {money(f.amountCents)}
+                      <button type="button" className="btn btn--ghost btn--sm" style={{ padding: '0 0.25rem' }} aria-label={t('billing.removeFee')} onClick={async () => { await unassign.mutateAsync({ id: f.feeId }); await refresh(); }}>×</button>
+                    </span>
+                  ))}
+                  {available.length > 0 && (
+                    <select className="input glass-inset" style={{ flex: '0 1 12rem' }} value="" onChange={async (e) => { if (e.target.value) { await assign.mutateAsync({ studentId, feePlanId: e.target.value }); await refresh(); } }}>
+                      <option value="">{g.fees.length ? t('billing.addFee') : t('billing.assignFee')}</option>
+                      {available.map((p) => <option key={p.id} value={p.id}>{p.name} · {money(p.amountCents)}</option>)}
+                    </select>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
       </section>

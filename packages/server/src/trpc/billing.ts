@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-only
 // Copyright (C) 2026 OpenMasjid-Solutions
 /**
- * Billing (CLAUDE.md §4/§5): fee plans, per-enrollment fee assignment, per-family discount,
+ * Billing (CLAUDE.md §4/§5): fee plans, per-student fee assignment, per-family discount,
  * invoice generation, the derived ledger/balance, and manual payments (cash/Zelle/check/other).
  * Admin + finance only (finance works LAN + tunnel; admin LAN-only — origin policy). All money
  * goes through billing/ledger.ts + billing/invoices.ts; amounts are integer cents. Audited.
@@ -11,7 +11,7 @@ import { TRPCError } from '@trpc/server';
 import { and, eq, asc, desc } from 'drizzle-orm';
 import { router, adminOrFinanceProcedure, auditActor } from './trpc';
 import { db } from '../db';
-import { feePlans, enrollmentFees, enrollments, students, classes, families, invoices, payments } from '../db/schema';
+import { feePlans, studentFees, students, families, invoices, payments } from '../db/schema';
 import { rid } from '../db/ids';
 import { audit } from '../audit';
 import { recordPayment, reversePayment, familyBalance, invoiceTotal, invoicePaid } from '../billing/ledger';
@@ -41,39 +41,42 @@ export const billingRouter = router({
 
   feePlanArchive: adminOrFinanceProcedure.input(z.object({ id: ID })).mutation(({ ctx, input }) => {
     if (!db.select({ id: feePlans.id }).from(feePlans).where(eq(feePlans.id, input.id)).get()) throw new TRPCError({ code: 'NOT_FOUND', message: 'Fee plan not found.' });
+    // Archiving a plan removes it everywhere: flip the status AND drop its student assignments, so the
+    // family billing page and invoice generation agree (invoices already skip non-active plans) and no
+    // orphaned student_fees linger. Existing invoices/payments are untouched (immutable).
+    const removed = db.delete(studentFees).where(eq(studentFees.feePlanId, input.id)).run().changes;
     db.update(feePlans).set({ status: 'archived', updatedAt: now() }).where(eq(feePlans.id, input.id)).run();
-    audit(auditActor(ctx), 'feePlan.archive', { entity: 'feePlan', entityId: input.id });
+    audit(auditActor(ctx), 'feePlan.archive', { entity: 'feePlan', entityId: input.id, detail: { unassigned: removed } });
     return { ok: true as const };
   }),
 
-  // ── Per-family fee assignment + discount ─────────────────────────────────────
-  /** A family's active enrollments (student × class) with their assigned fee (if any). */
+  // ── Per-student fee assignment + per-family discount ─────────────────────────
+  /** A family's active students, each with the fee plan(s) assigned (one row per assignment;
+   *  a student with no fee still appears once, with null fee fields). */
   familyFees: adminOrFinanceProcedure.input(z.object({ familyId: ID })).query(({ input }) => {
     const rows = db
-      .select({ enrollmentId: enrollments.id, studentId: students.id, firstName: students.firstName, lastName: students.lastName, className: classes.name, feeId: enrollmentFees.id, feePlanId: feePlans.id, feePlanName: feePlans.name, amountCents: feePlans.amountCents })
-      .from(enrollments)
-      .innerJoin(students, eq(students.id, enrollments.studentId))
-      .innerJoin(classes, eq(classes.id, enrollments.classId))
-      .leftJoin(enrollmentFees, eq(enrollmentFees.enrollmentId, enrollments.id))
-      .leftJoin(feePlans, eq(feePlans.id, enrollmentFees.feePlanId))
-      .where(and(eq(students.familyId, input.familyId), eq(enrollments.status, 'active')))
-      .orderBy(asc(students.firstName), asc(classes.name))
+      .select({ studentId: students.id, firstName: students.firstName, lastName: students.lastName, feeId: studentFees.id, feePlanId: feePlans.id, feePlanName: feePlans.name, amountCents: feePlans.amountCents })
+      .from(students)
+      .leftJoin(studentFees, eq(studentFees.studentId, students.id))
+      .leftJoin(feePlans, eq(feePlans.id, studentFees.feePlanId))
+      .where(and(eq(students.familyId, input.familyId), eq(students.status, 'active')))
+      .orderBy(asc(students.firstName))
       .all();
     return rows;
   }),
 
-  assignFee: adminOrFinanceProcedure.input(z.object({ enrollmentId: ID, feePlanId: ID })).mutation(({ ctx, input }) => {
-    if (!db.select({ id: enrollments.id }).from(enrollments).where(eq(enrollments.id, input.enrollmentId)).get()) throw new TRPCError({ code: 'NOT_FOUND', message: 'Enrollment not found.' });
+  assignFee: adminOrFinanceProcedure.input(z.object({ studentId: ID, feePlanId: ID })).mutation(({ ctx, input }) => {
+    if (!db.select({ id: students.id }).from(students).where(eq(students.id, input.studentId)).get()) throw new TRPCError({ code: 'NOT_FOUND', message: 'Student not found.' });
     if (!db.select({ id: feePlans.id }).from(feePlans).where(eq(feePlans.id, input.feePlanId)).get()) throw new TRPCError({ code: 'NOT_FOUND', message: 'Fee plan not found.' });
-    if (db.select({ id: enrollmentFees.id }).from(enrollmentFees).where(and(eq(enrollmentFees.enrollmentId, input.enrollmentId), eq(enrollmentFees.feePlanId, input.feePlanId))).get()) return { ok: true as const };
-    db.insert(enrollmentFees).values({ id: rid('enf'), enrollmentId: input.enrollmentId, feePlanId: input.feePlanId, createdAt: now() }).run();
-    audit(auditActor(ctx), 'fee.assign', { entity: 'enrollment', entityId: input.enrollmentId, detail: { feePlanId: input.feePlanId } });
+    if (db.select({ id: studentFees.id }).from(studentFees).where(and(eq(studentFees.studentId, input.studentId), eq(studentFees.feePlanId, input.feePlanId))).get()) return { ok: true as const };
+    db.insert(studentFees).values({ id: rid('stf'), studentId: input.studentId, feePlanId: input.feePlanId, createdAt: now() }).run();
+    audit(auditActor(ctx), 'fee.assign', { entity: 'student', entityId: input.studentId, detail: { feePlanId: input.feePlanId } });
     return { ok: true as const };
   }),
 
   unassignFee: adminOrFinanceProcedure.input(z.object({ id: ID })).mutation(({ ctx, input }) => {
-    db.delete(enrollmentFees).where(eq(enrollmentFees.id, input.id)).run();
-    audit(auditActor(ctx), 'fee.unassign', { entity: 'enrollmentFee', entityId: input.id });
+    db.delete(studentFees).where(eq(studentFees.id, input.id)).run();
+    audit(auditActor(ctx), 'fee.unassign', { entity: 'studentFee', entityId: input.id });
     return { ok: true as const };
   }),
 

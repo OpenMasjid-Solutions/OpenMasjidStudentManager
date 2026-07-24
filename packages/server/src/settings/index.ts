@@ -2,8 +2,8 @@
 // Copyright (C) 2026 OpenMasjid-Solutions
 /**
  * App-owned settings (CLAUDE.md §6 — NOT a masjid profile injected by the platform; this app
- * collects and owns its own config). Simple typed key/value over the `settings` table. School
- * name and the report-card merit toggle are the first entries; SMTP/Stripe join later.
+ * collects and owns its own config). Simple typed key/value over the `settings` table: school
+ * name, currency, the external-tuition toggle, self-registration, SMTP, and the Stripe account.
  */
 import { eq } from 'drizzle-orm';
 import { db } from '../db';
@@ -12,7 +12,6 @@ import { settings } from '../db/schema';
 export const SETTING_KEYS = {
   schoolName: 'school_name',
   currency: 'currency',
-  meritOnReportCard: 'merit_on_report_card',
   externalPayments: 'external_payments', // Donations/Kiosk tuition campaign on/off (§11.2 info.enabled)
   reconcileCursor: 'stripe_reconcile_cursor', // unix seconds — last reconciled PI created-time (§11.4)
   reconcileLast: 'stripe_reconcile_last', // JSON summary of the last reconcile run (for the finance UI)
@@ -39,9 +38,6 @@ export function getSchoolName(): string {
 }
 export function getCurrency(): string {
   return getSetting(SETTING_KEYS.currency) || 'usd';
-}
-export function getMeritOnReportCard(): boolean {
-  return getSetting(SETTING_KEYS.meritOnReportCard) === '1';
 }
 /** External (Donations/Kiosk) tuition payments — on unless the admin turned them off. */
 export function getExternalPaymentsEnabled(): boolean {

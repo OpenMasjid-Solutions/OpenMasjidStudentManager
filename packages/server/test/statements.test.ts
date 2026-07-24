@@ -8,7 +8,7 @@
  */
 import { describe, it, expect, beforeAll, beforeEach } from 'vitest';
 import { freshApp, makeCtx } from './harness';
-import { paymentAllocations, payments, invoiceItems, invoices, enrollmentFees, feePlans, enrollments, classTeachers, classSubjects, classSessions, classes, terms, students, families, users, auditLog } from '../src/db/schema';
+import { paymentAllocations, payments, invoiceItems, invoices, studentFees, feePlans, students, families, users, auditLog } from '../src/db/schema';
 import type { Role } from '../src/db/schema';
 
 let app: Awaited<ReturnType<typeof freshApp>>;
@@ -22,7 +22,7 @@ beforeAll(async () => {
 });
 beforeEach(() => {
   const { db } = app.dbmod;
-  for (const t of [paymentAllocations, payments, invoiceItems, invoices, enrollmentFees, feePlans, enrollments, classTeachers, classSubjects, classSessions, classes, terms, students, families, users, auditLog]) db.delete(t).run();
+  for (const t of [paymentAllocations, payments, invoiceItems, invoices, studentFees, feePlans, students, families, users, auditLog]) db.delete(t).run();
 });
 
 describe('statement access wall (canServeStatement)', () => {
@@ -32,7 +32,7 @@ describe('statement access wall (canServeStatement)', () => {
     expect(canServeStatement('admin', 'tunnel')).toBe(false); // origin policy §12.4
     expect(canServeStatement('finance', 'lan')).toBe(true);
     expect(canServeStatement('finance', 'tunnel')).toBe(true);
-    for (const r of ['teacher', 'parent'] as const) {
+    for (const r of ['parent'] as const) {
       expect(canServeStatement(r, 'lan')).toBe(false);
       expect(canServeStatement(r, 'tunnel')).toBe(false);
     }
@@ -48,13 +48,10 @@ describe('esc', () => {
 
 async function seed() {
   const admin = caller('admin');
-  const term = await admin.classes.termCreate({ name: 'T1', isCurrent: true });
-  const cls = await admin.classes.classCreate({ termId: term.id, name: 'Maktab A', type: 'maktab' });
   const fam = await admin.people.familyCreate({ name: 'Ismail' });
   const s1 = await admin.people.studentCreate({ familyId: fam.id, firstName: 'Yusuf', lastName: 'Ismail' });
-  await admin.classes.enroll({ classId: cls.id, studentId: s1.id });
   const plan = await admin.billing.feePlanCreate({ name: 'Monthly tuition', amountCents: 5000, cadence: 'monthly' });
-  for (const f of await admin.billing.familyFees({ familyId: fam.id })) await admin.billing.assignFee({ enrollmentId: f.enrollmentId, feePlanId: plan.id });
+  await admin.billing.assignFee({ studentId: s1.id, feePlanId: plan.id });
   await admin.billing.generateFamily({ familyId: fam.id, periodKey: '2026-07', label: 'Tuition — Jul 2026', dueDate: '2026-07-01' });
   await admin.billing.recordManualPayment({ familyId: fam.id, amountCents: 2000, channel: 'cash', occurredAt: '2026-07-03' });
   return { admin, familyId: fam.id, studentId: s1.id };

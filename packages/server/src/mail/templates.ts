@@ -44,7 +44,7 @@ export function inviteEmail(schoolName: string, guardianName: string, url: strin
   const text = [
     hi,
     '',
-    `${schoolName} has invited you to the parent portal, where you can see your children's grades, attendance, schedule, report cards, and your family balance — and pay tuition by card.`,
+    `${schoolName} has invited you to the parent portal, where you can see your family balance and pay tuition by card.`,
     '',
     'Set your password to get started:',
     url,
@@ -54,7 +54,7 @@ export function inviteEmail(schoolName: string, guardianName: string, url: strin
   const html = shell(
     hi,
     [
-      `${esc(schoolName)} has invited you to the <strong>parent portal</strong> — see your children's grades, attendance, schedule, report cards and your family balance, and pay tuition by card.`,
+      `${esc(schoolName)} has invited you to the <strong>parent portal</strong> — see your family balance and pay tuition by card.`,
       'Set your password to get started:',
     ],
     { label: 'Set up my account', url },

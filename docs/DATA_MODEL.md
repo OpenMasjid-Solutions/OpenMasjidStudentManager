@@ -52,7 +52,7 @@ money paths). Every table: `id`, `created_at`, `updated_at`.
   versioned artifacts) needs it and the spec is built around tRPC (`AppRouter` type import §6/§8,
   role+origin middleware §5). Following §7 exactly; noting the sibling divergence here.
 
-- **Repo + image name = `OpenMasjidStudentManager` → `ghcr.io/openmasjid-solutions/openmasjidstudentmanager`.**
+- **Repo + image name = `OpenMasjidStudents` → `ghcr.io/openmasjid-solutions/openmasjidstudents`.**
   Per Hasan (2026-07-15): keep the current folder/GitHub name. **App id stays `students`** (locked by
   the Fabric contract — Donations & Kiosk already reference `students/billing`; the docs' canonical
   example is `students/billing`). **Deviates from CLAUDE.md §2's image `openmasjid-students`.** The

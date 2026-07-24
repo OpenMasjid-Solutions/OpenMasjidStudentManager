@@ -9,6 +9,31 @@ follows [Keep a Changelog](https://keepachangelog.com/), and the project uses
 
 ## [Unreleased]
 
+## [0.35.0]
+
+### Changed — major scope pivot: tuition & fee management only
+- **OpenMasjid Students is now a tuition/fee app, not a full SIS.** Everything academic was
+  **removed**: classes, weekly timetable/scheduling, attendance, gradebook, grading scales,
+  merit points, the comment bank, exams, report cards, transcripts, term finals, the
+  admissions pipeline (including the public enquiry form), the Report Creator, custom student
+  fields, documents-on-file, and student notes/incidents. The **teacher role** is gone too.
+- **What remains** is the whole money side: families & students (name + PIN), **per-student
+  fee plans**, family invoices, the derived ledger, manual (cash/Zelle/check) and card
+  payments (parent-portal Stripe + autopay + saved cards), printable statements, and the
+  `students/billing` Fabric provider that powers tuition on the **OpenMasjid Donations** site
+  and **Kiosk**. Three roles: admin (LAN-only), finance, and parent.
+- **Fees are now assigned per student** (`student_fees`) instead of per class enrollment. The
+  invoice engine, ledger, payments, statements, portal, and the entire Fabric contract are
+  unchanged — the money never moved, only where a fee hangs. **Upgrades preserve every existing
+  fee assignment**: migration `0020` creates `student_fees` and **backfills it from the old
+  per-enrollment assignments** before `0021` tears down the SIS tables.
+- **Repo + image renamed** `OpenMasjidStudentManager` → `OpenMasjidStudents`
+  (`ghcr.io/openmasjid-solutions/openmasjidstudents`). App id stays `students`.
+- Migration `0021` drops all SIS tables (children-before-parents so it's safe on a populated
+  DB) and **disables any leftover `teacher` accounts + kills their sessions** (the role was
+  removed). **Academic data is dropped** — intended; families, students, invoices, payments and
+  fee assignments are preserved.
+
 ## [0.34.0]
 
 ### Added
